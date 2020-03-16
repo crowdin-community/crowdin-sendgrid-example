@@ -71,7 +71,7 @@
 
   function catchRejection(e, message = undefined) {
     console.log(e);
-    showToast(message);
+    showToast(e.error || message);
     let el = document.querySelector('.i_w .center');
     if(!!el) {
       el.innerHTML =
@@ -87,13 +87,10 @@
       if(response.status === 204) {
         return resolve();
       }
-      if(response.status === 500) {
-        return reject(500);
-      }
       response.json()
         .then(res => {
           if(![200, 201].includes(response.status)) {
-            reject();
+            reject(JSON.parse(res));
           } else {
             resolve(res);
           }
@@ -302,7 +299,7 @@
       .then((res) => {
         setTimeout(() => {
           let el = document.querySelector('crowdin-simple-integration');
-          el.setCrowdinLanguagesData(res.projectTargetLanguages);
+          el && el.setCrowdinLanguagesData(res.projectTargetLanguages);
         }, 2000);
       })
       .catch(e => {

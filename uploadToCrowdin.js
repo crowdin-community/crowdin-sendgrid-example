@@ -1,14 +1,9 @@
-const {createClient} = require('@typeform/api-client');
-const crowdin = require('@crowdin/crowdin-api-client').default;
 const _ = require('lodash');
 
 function crowdinUpdate(db) {
   return (req, res) => {
-    const typeformAPI = createClient({token: res.integration.integrationToken});
-    const crowdinApi = new crowdin({
-      token: res.crowdin.token,
-      organization: res.origin.domain
-    });
+    const typeformAPI = res.integrationClient;
+    const crowdinApi = res.crowdinApiClient;
     const fileIds = req.body;
     const projectId = res.origin.context.project_id;
 

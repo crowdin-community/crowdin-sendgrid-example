@@ -1,5 +1,3 @@
-const {createClient} = require('@typeform/api-client');
-const crowdin = require('@crowdin/crowdin-api-client').default;
 const axios = require('axios').default;
 
 const helper = require('./helpers');
@@ -35,11 +33,8 @@ const supportedLanguages = [
 
 function typeformUpdate() {
   return (req, res) => {
-    const typeformAPI = createClient({token: res.integration.integrationToken});
-    const crowdinApi = new crowdin({
-      token: res.crowdin.token,
-      organization: res.origin.domain
-    });
+    const typeformAPI = res.integrationClient;
+    const crowdinApi = res.crowdinApiClient;
     const formsTranslations = req.body;
     const projectId = res.origin.context.project_id;
 

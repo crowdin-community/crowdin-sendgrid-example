@@ -20,10 +20,7 @@ app.get('/assets/logo.png', (req, res) => res.sendFile(__dirname + '/assets/logo
 
 app.get('/', middleware.requireAuthentication, (req, res) => res.sendFile(__dirname + '/templates/app.html'));
 
-app.get('/manifest.json', (req, res) => {
-  var sanitizedConfig = _.pick(config, 'identifier', 'name', 'baseUrl', 'authentication', 'events', 'scopes', 'modules');
-  res.json(sanitizedConfig);
-});
+app.get('/manifest.json', (req, res) => res.json(_.pick(config, 'identifier', 'name', 'baseUrl', 'authentication', 'events', 'scopes', 'modules')));
 
 app.get('/status', middleware.requireAuthentication, (req, res) => {
   let status = {isInstalled: false, isLoggedIn: false};
@@ -39,11 +36,7 @@ app.get('/status', middleware.requireAuthentication, (req, res) => {
     .catch(catchRejection('Some problem to fetch organization or integration', res))
   });
 
-app.get('/integration-login', middleware.requireAuthentication, (req, res) => {
-  db.integration.getLoginUrl(res)
-    .then( url => res.send({url}))
-    .catch(catchRejection('Cant sign JWT token', res));
-});
+app.get('/integration-login', middleware.requireAuthentication, db.integration.getLoginUrl());
 
 app.get('/integration-log-out', middleware.requireAuthentication, middleware.withIntegration, (req, res) => {
   res.integration.destroy()
@@ -51,17 +44,21 @@ app.get('/integration-log-out', middleware.requireAuthentication, middleware.wit
     .catch(catchRejection('Cant destroy integration', res));
 });
 
-app.get('/integration-token', (req, res) => {
-  db.integration.setupToken(req)
-    .then(() => res.sendFile(__dirname + '/templates/closeAuthModal.html'))
-    .catch(catchRejection('Cant create or update integration', res))
-});
+app.get('/integration-token', db.integration.setupToken());
 
-app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, (req, res) => {
-  db.integration.getData(res)
-    .then(response => res.send(response))
-    .catch(catchRejection('Cant fetch integration data', res));
-});
+app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, db.integration.getData());
+
+app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, middleware.withIntegration, db.organization.getProjectFiles(db));
+
+app.post('/installed', db.organization.install());
+
+app.post('/get-file-progress', middleware.requireAuthentication, middleware.withCrowdinToken, db.organization.getFileProgress());
+
+app.get('/get-project-data', middleware.requireAuthentication, middleware.withCrowdinToken, db.organization.getProjectData());
+
+app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate(db));
+
+app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, typeformUpdate());
 
 // app.get('/mapping', (req, res) => {
 //   db.mapping.findAll()
@@ -84,34 +81,6 @@ app.get('/integration-data', middleware.requireAuthentication, middleware.withIn
 //     })
 //     .catch(catchRejection('Cant fetch integrations', res));
 // });
-
-app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, middleware.withIntegration, (req, res) => {
-  db.organization.getProjectFiles(res, db)
-    .then(response => res.json(response))
-    .catch(catchRejection('Cant fetch data from Crowdin', res));
-});
-
-app.post('/installed', (req, res) => {
-  db.organization.install(req, res)
-    .then(() => res.status(204).send())
-    .catch(catchRejection('Cant install application', res));
-});
-
-app.post('/get-file-progress', middleware.requireAuthentication, middleware.withCrowdinToken, (req, res) => {
-  db.organization.getFileProgress(req, res)
-    .then((progress) => res.json(progress))
-    .catch(catchRejection('Cant fetch progress for file', res));
-});
-
-app.get('/get-project-data', middleware.requireAuthentication, middleware.withCrowdinToken, (req, res) => {
-  db.organization.getProjectData(res)
-    .then((project) => res.json(project))
-    .catch(catchRejection('Cant fetch project data', res));
-});
-
-app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate(db));
-
-app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, typeformUpdate());
 
 db.sequelize.sync({force: false}).then(function() {
   app.listen(PORT, () => {
