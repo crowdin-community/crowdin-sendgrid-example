@@ -149,7 +149,7 @@ module.exports = function(sequelize, DataTypes) {
               grant_type: 'refresh_token',
               client_id: keys.crowdinClientId,
               client_secret: keys.crowdinClientSecret,
-              refresh_token: organization.refreshToken,
+              refresh_token: decryptData(organization.refreshToken),
             };
             axios.post(keys.crowdinAuthUrl, payload)
               .then(response => {
