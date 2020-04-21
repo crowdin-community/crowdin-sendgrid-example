@@ -7,10 +7,10 @@ module.exports = {
     : "https://crowdin-typeform.herokuapp.com/",
   crowdinClientId: isDev
     ? "trjBbjAue27tY7Hw0phH"  // dev
-    : "ikwEMWOH6b5gWiXo1Apv",
+    : "79aTqdRo8oAFFZMLl773",
   crowdinClientSecret: isDev
     ? "n3fsQOtG3D2fqPhBwkBq02A7HnsmUzaxHIWy9FpN" // dev
-    : "aD48fy1WV5agzZEdPcAv4QgJw1lWkJpDJh9PoNOY",
+    : "OaHvAdFOKdxV5Y0yMBayE9zAX09Gxy1cYCUBkXTD",
   integrationClientId: isDev
     ? "FzzC2UBbCjhNt9CYACYXvfo42P572xXhDkVoKKBkddtM" // dev
     : "FH6eFmebzgprreXJDFp1JS7oczabvGHnqgdgqQV1Pe7L",
