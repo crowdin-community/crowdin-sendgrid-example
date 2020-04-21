@@ -1,20 +1,25 @@
-const _ = require('underscore');
+const _ = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
 
-const db = require('./db');
+const db = require('./db_connect');
 const config = require('./config');
-const helper = require('./helpers');
+const { catchRejection } = require('./helpers');
 const PORT = process.env.PORT || 8000;
-const catchRejection = helper.catchRejection;
-const middleware = require('./middleware.js')(db);
+const middleware = require('./middleware.js');
 const crowdinUpdate = require('./uploadToCrowdin');
 const typeformUpdate = require('./uploadToIntegration');
+
+const Mapping = require('./models/mapping');
+const Integration = require('./models/integration');
+const Organization = require('./models/organization');
 
 const app = express();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
+
+app.use("/polyfills", express.static(__dirname + '/polyfills'));
 
 app.get('/assets/logo.png', (req, res) => res.sendFile(__dirname + '/assets/logo.png'));
 
@@ -24,10 +29,10 @@ app.get('/manifest.json', (req, res) => res.json(_.pick(config, 'identifier', 'n
 
 app.get('/status', middleware.requireAuthentication, (req, res) => {
   let status = {isInstalled: false, isLoggedIn: false};
-  db.organization.findOne({where: {uid: res.origin.domain}})
+  Organization.findOne({where: {uid: res.origin.domain}})
     .then(organization => {
       status.isInstalled = !!organization;
-      return db.integration.findOne({where: {uid: res.clientId}})
+      return Integration.findOne({where: {uid: res.clientId}})
     })
     .then(integration => {
       status.isLoggedIn = !!integration;
@@ -36,7 +41,7 @@ app.get('/status', middleware.requireAuthentication, (req, res) => {
     .catch(catchRejection('Some problem to fetch organization or integration', res))
   });
 
-app.get('/integration-login', middleware.requireAuthentication, db.integration.getLoginUrl());
+app.get('/integration-login', middleware.requireAuthentication, Integration.getLoginUrl());
 
 app.get('/integration-log-out', middleware.requireAuthentication, middleware.withIntegration, (req, res) => {
   res.integration.destroy()
@@ -44,45 +49,49 @@ app.get('/integration-log-out', middleware.requireAuthentication, middleware.wit
     .catch(catchRejection('Cant destroy integration', res));
 });
 
-app.get('/integration-token', db.integration.setupToken());
+app.get('/integration-token', Integration.setupToken());
 
-app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, db.integration.getData());
+app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, Integration.getData());
 
-app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, middleware.withIntegration, db.organization.getProjectFiles(db));
+app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, middleware.withIntegration, Organization.getProjectFiles(db));
 
-app.post('/installed', db.organization.install());
+app.post('/installed', Organization.install());
 
-app.post('/get-file-progress', middleware.requireAuthentication, middleware.withCrowdinToken, db.organization.getFileProgress());
+app.post('/get-file-progress', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getFileProgress());
 
-app.get('/get-project-data', middleware.requireAuthentication, middleware.withCrowdinToken, db.organization.getProjectData());
+app.get('/get-project-data', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getProjectData());
 
 app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate(db));
 
 app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, typeformUpdate());
 
-// app.get('/mapping', (req, res) => {
-//   db.mapping.findAll()
-//     .then(r => res.json(r))
-//     .catch(catchRejection('Cant fetch mappings', res));
-// });
-//
-// app.get('/organizations', (req, res) => {
-//   db.organization.findAll()
-//   .then(organizations => {
-//     res.json(organizations);
-//   })
-//   .catch(catchRejection('Cnat fetch organizations', res));
-// });
-//
-// app.get('/integrations', (req, res) => {
-//   db.integration.findAll()
-//     .then(integrations => {
-//       res.json(integrations);
-//     })
-//     .catch(catchRejection('Cant fetch integrations', res));
-// });
+// ------------------------------ start routes for debugging only ---------------------------
+if(process.env.NODE_ENV !== 'production') {
+  app.get('/mapping', (req, res) => {
+    Mapping.findAll()
+      .then(r => res.json(r))
+      .catch(catchRejection('Cant fetch mappings', res));
+  });
 
-db.sequelize.sync({force: false}).then(function() {
+  app.get('/organizations', (req, res) => {
+    Organization.findAll()
+    .then(organizations => {
+      res.json(organizations);
+    })
+    .catch(catchRejection('Cnat fetch organizations', res));
+  });
+
+  app.get('/integrations', (req, res) => {
+    Integration.findAll()
+      .then(integrations => {
+        res.json(integrations);
+      })
+      .catch(catchRejection('Cant fetch integrations', res));
+  });
+}
+// ------------------------------ end routes for debugging only ---------------------------
+
+db.sync({force: false}).then(function() {
   app.listen(PORT, () => {
     console.log(`Crowdin apps listening on ${PORT}! Good luck!!!`);
   });

@@ -1,42 +1,40 @@
+const Sequelize = require('sequelize');
+const db = require('../db_connect');
 
-module.exports = function(sequelize, DataTypes) {
-  const Mapping = sequelize.define('mapping', {
-    domain: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    projectId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    integrationFileId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    crowdinFileId: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    crowdinUpdatedAt: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    integrationUpdatedAt: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    }
-  });
+// Structure of mapping table
+const Mapping = db.define('mapping', {
+  domain: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  projectId: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  integrationFileId: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  crowdinFileId: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  crowdinUpdatedAt: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  },
+  integrationUpdatedAt: {
+    type: Sequelize.STRING,
+    allowNull: false,
+  }
+});
 
-  Mapping.getFilesByDomainProjectId= function(res) {
-    return new Promise ((resolve, reject) => {
-      Mapping.findAll({where: {
-          domain: res.origin.domain,
-          projectId: res.origin.context.project_id,
-        }})
-        .then( reccords => resolve(reccords))
-        .catch(e => reject('Cant get data from mapping', e));
-    });
-  };
-
-  return Mapping;
+// Get records of uploaded files from integration to Crowdin
+Mapping.getFilesByDomainProjectId= function(res) {
+  return Mapping.findAll({where: {
+    domain: res.origin.domain,
+    projectId: res.origin.context.project_id,
+  }})
 };
+
+module.exports = Mapping;

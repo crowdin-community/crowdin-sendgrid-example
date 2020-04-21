@@ -17,21 +17,14 @@ const manifest = {
   "modules": {
       "integrations": [
           {
-              "key": "typeform_app_test",
-              "name": "Typeform Integration",
+              "key": "typeform",
+              "name": "Typeform",
               "description": "Translate your forms and surveys from Typeform to reach your audience in their native language",
               "logo": "/assets/logo.png",
               "url": "/"
           }
       ]
   },
-  // crowdin client secret
-  "clientSecret": keys.crowdinClientSecret,
-
-  "integrationClientId": keys.integrationClientId,
-  "integrationSecret": keys.integrationSecret,
-  "callbackUrl": keys.callbackUrl,
-
   scope: [
     'forms:read',
     'accounts:read',

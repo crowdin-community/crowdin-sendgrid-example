@@ -6,6 +6,8 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title></title>
     <script src="https://pure-refuge-59195.herokuapp.com/dist/crowdin-web-components/crowdin-web-components.js"></script>
+    <script src="/polyfills/promise.js"></script>
+    <script src="/polyfills/fetch.js.js"></script>
     <style type='text/css'>
         .i_w {
             padding: 16px 24px;
@@ -25,14 +27,48 @@
             text-align: right;
             margin-bottom: 10px;
         }
+
+        .login {
+            margin-bottom: 10px;
+        }
+
+        .login img {
+            max-width: 70px;
+            max-height: 70px;
+            width: auto;
+            height: auto;
+        }
+
+        .login crowdin-h4 {
+            margin: 8px 0 16px;
+        }
     </style>
 </head>
 <body>
 <template id=integration>
     <div class='top'>
+        <crowdin-button icon-before="account_circle" onclick="integrationLogOut()">Log out</crowdin-button>
     </div>
     <crowdin-simple-integration>
     </crowdin-simple-integration>
+</template>
+<template id="login">
+    <div class="center">
+        <div>
+            <crowdin-card is-shadowed is-padding-lg class="login">
+                <img alt='Integration logo' src='/assets/logo.svg'/>
+                <crowdin-h4 id="integration-name">Integration name</crowdin-h4>
+                <crowdin-button
+                    outlined
+                    icon-after="arrow_forward"
+                    onclick="integrationLogin()"
+                >
+                    Log In With Integration
+                </crowdin-button>
+            </crowdin-card>
+            <!--<crowdin-a href="#" target="_blank">Learn more</crowdin-a>-->
+        </div>
+    </div>
 </template>
 <div class='i_w'>
     <div class="center">
@@ -44,15 +80,16 @@
 </div>
 <crowdin-toasts></crowdin-toasts>
 <script type=text/javascript>
+  if (!window.Promise) {
+    window.Promise = Promise;
+  }
+
   let manifest = {};
   let urlParams = new URLSearchParams(window.location.search);
   let origin = urlParams.get('origin');
   let client_id = urlParams.get('client_id');
   let tokenJwt = urlParams.get('tokenJwt');
- // let tokenJwt = 'eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0cmpCYmpBdWUyN3RZN0h3MHBoSCIsInN1YiI6IjEiLCJkb21haW4iOiJ5ZXZoZW4xMTEiLCJjb250ZXh0Ijp7InByb2plY3RfaWQiOiI1In0sImlhdCI6MTU4MjE1NTQwNiwiZXhwIjoxNTgyMTU2MzA2fQ.iq4MLXuvPYbqJU0b8cKWD1WgsYgNo8xtDi1hXVMCO80';
-   let restParams = window.location.search;
-
-  // let restParams = `?origin=${origin}&client_id=${client_id}&tokenJwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0cmpCYmpBdWUyN3RZN0h3MHBoSCIsInN1YiI6IjEiLCJkb21haW4iOiJ5ZXZoZW4xMTEiLCJjb250ZXh0Ijp7InByb2plY3RfaWQiOiI1In0sImlhdCI6MTU4MjE1NTQwNiwiZXhwIjoxNTgyMTU2MzA2fQ.iq4MLXuvPYbqJU0b8cKWD1WgsYgNo8xtDi1hXVMCO80`;
+  let restParams = window.location.search;
 
   let postPromises = {};
 
@@ -70,7 +107,8 @@
   }
 
   function catchRejection(e, message = undefined) {
-    console.log(e);
+    // here the right place to console.log what goes wrong
+    // console.log('err -------------->', e);
     showToast(e.error || message);
     let el = document.querySelector('.i_w .center');
     if(!!el) {
@@ -174,6 +212,14 @@
       });
   })();
 
+  function getLoginTemplate() {
+    let login = document.querySelector('#login').content.cloneNode(true);
+    document.querySelector('.i_w').innerHTML = '';
+    login.querySelector('crowdin-h4').innerHTML = manifest.name;
+    login.querySelector('crowdin-button').innerHTML = `LOG IN WITH ${manifest.name}`;
+    document.querySelector('.i_w').appendChild(login);
+  }
+
   function isInstalled() {
     checkOrigin()
       .then(restParams => {
@@ -188,8 +234,7 @@
             `<h1>Looks like ${manifest.name} is not installed yet!</h1>
                         <p>Contact your organization administrator to install it. More info on <a href='https://support.crowdin.com'>Link to how to install</a></p>`;
         } else if(!res.isLoggedIn) {
-          document.querySelector('.i_w .center div').innerHTML =
-            `<crowdin-button primary onclick="integrationLogin()">Loggin with your ${manifest.name} account</crowdin-button>`;
+          getLoginTemplate();
         } else {
           let el = document.querySelector('.i_w');
           let template = document.getElementById('integration');
@@ -345,9 +390,7 @@
         return checkResponse(response);
       })
       .then(res => {
-        let el = document.querySelector('.i_w');
-        el.innerHTML =
-          `<div class='center'><div><crowdin-button primary onclick="integrationLogin()">Loggin with your ${manifest.name} account</crowdin-button></div></div>`;
+        getLoginTemplate();
         integrationLogin();  // immediately show login form again
       })
       .catch(e => {
@@ -384,7 +427,7 @@
         return checkResponse(response);
       })
       .then(res => {
-        showToast('Done');
+        showToast(fileIds.length === 1 ? 'File imported successfully' : 'Files imported successfully');
         el.setAttribute('is-to-crowdin-process', false);
         getCrowdinFiles();
       })
@@ -414,7 +457,7 @@
         return checkResponse(response);
       })
       .then(res => {
-        showToast('Done');
+        showToast(Object.keys(fileIds).length === 1 ? 'File imported successfully' : 'Files imported successfully');
         el.setAttribute('is-to-integration-process', false);
         getIntegrationFiles();
       })

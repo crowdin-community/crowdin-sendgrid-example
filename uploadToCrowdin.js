@@ -1,6 +1,6 @@
-const _ = require('lodash');
+const Mapping = require('./models/mapping');
 
-function crowdinUpdate(db) {
+function crowdinUpdate() {
   return (req, res) => {
     const typeformAPI = res.integrationClient;
     const crowdinApi = res.crowdinApiClient;
@@ -32,7 +32,7 @@ function crowdinUpdate(db) {
         );
 
         return Promise.all(addedFiles.map(f => {
-          return db.mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}})
+          return Mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}})
             .then(file => {
               if(!!file) {
                 return crowdinApi.sourceFilesApi.getFile(projectId, file.crowdinFileId)
@@ -65,7 +65,7 @@ function crowdinUpdate(db) {
                   title: f.title
                 })
                   .then(response => {
-                    return db.mapping.create({
+                    return Mapping.create({
                       domain: res.origin.domain,
                       projectId: projectId,
                       integrationUpdatedAt: f.integrationUpdatedAt,
