@@ -1,10 +1,10 @@
-# crowdin-mailchimp-example
+# crowdin-typeform-example
 
-An example to showcase the integration of [Mailchimp](https://mailchimp.com/) and [Crowdin Enterprise](https://crowdin.com/enterprise)
+An example to showcase the integration of [Typeform](https://www.typeform.com/) and [Crowdin Enterprise](https://crowdin.com/enterprise)
 
 The goal of this project is to show how easily you can create and deploy your Crowdin Application.
 
-Using this Application you can easily localize your Mailchimp content in Crowdin Enterprise.
+Using this Application you can easily localize your Typeform content in Crowdin Enterprise.
 
 ## Table of contents
 
@@ -35,14 +35,14 @@ Using this Application you can easily localize your Mailchimp content in Crowdin
 First of all, you need to clone the repository:
 
 ```console
-git clone https://github.com/crowdin-community/crowdin-mailchimp-example.git
+git clone https://github.com/crowdin-community/crowdin-typeform-example.git
 ```
 
 #### Local environment
 
 1. Install dependencies
     ```console
-    cd crowdin-mailchimp-example
+    cd crowdin-typeform-example
     ```
 
    ```console
@@ -60,15 +60,15 @@ git clone https://github.com/crowdin-community/crowdin-mailchimp-example.git
     | Variable                  | Description |
     |---------------------------|-------------|
     | `crowdinClientId`<br>`crowdinClientSecret`| [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret
-    | `IntegrationClientId`<br>`IntegrationClientSecret`| [Mailchimp OAuth](https://mailchimp.com/developer/guides/how-to-use-oauth2/) Client ID and Client Secret
+    | `IntegrationClientId`<br>`IntegrationClientSecret`| [Typeform OAuth](https://developer.typeform.com/get-started/scopes/) Client ID and Client Secret
     | `UniqueCryptoSecret` | Unique random string. Will be used to encrypt data in DB
 
-4. Start Node server (default port is 7000):
+4. Start Node server (default port is 8000):
 
     - Use [ngrok](https://ngrok.com/) to make your server public:
 
     ```console
-    ngrok http 7000
+    ngrok http 8000
     ```
 
     - Open `keys.js` file and fill in `<your_ngrok_tunnel>`
@@ -89,7 +89,11 @@ git clone https://github.com/crowdin-community/crowdin-mailchimp-example.git
     - Start server using *nodemon*:
 
     ```console
-    nodemon --watch crowdin-mailchimp-example crowdin-mailchimp-example/index.js
+    nodemon --watch crowdin-typeform-example crowdin-typeform-example/index.js
+    ```
+    or from working directory
+    ```console
+    npm run dev
     ```
 
 #### Heroku
@@ -98,7 +102,7 @@ git clone https://github.com/crowdin-community/crowdin-mailchimp-example.git
 - Navigate to the project directory:
 
 ```console
-cd crowdin-mailchimp-example
+cd crowdin-typeform-example
 ```
 
 - Create `keys.js` file:
@@ -126,7 +130,7 @@ heroku addons:create heroku-postgresql:hobby-dev
 | Variable                    | Description                                                                           |
 |--------------------------------------------------------|---------------------------------------------------------------------------------------|
 | `CROWDIN_CLIENT_ID`<br>`CROWDIN_CLIENT_SECRET`         | [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret
-| `INTEGRATION_CLIENT_ID`<br>`INTEGRATION_CLIENT_SECRET` | [Mailchimp OAuth](https://mailchimp.com/developer/guides/how-to-use-oauth2/) Client ID and Client Secret
+| `INTEGRATION_CLIENT_ID`<br>`INTEGRATION_CLIENT_SECRET` | [Typeform OAuth](https://developer.typeform.com/get-started/scopes/) Client ID and Client Secret
 | `CRYPTO_SECRET`                                        | Unique random string. Will be used to encrypt data in DB
 
 Also you can fill in appropriate variables in `keys.js` file instead of defining environment variables.
@@ -160,7 +164,6 @@ For more about Node.js Apps on Heroku read "[Getting Started on Heroku with Node
 | templates/closeAuthModal.html      | Helper file to close integration authModal and reload the page
 | uploadToCrowdin.js                 | Code to upload files for localization to Crowdin
 | uploadToIntegration.js             | Code to upload translations to external service
-| passportSetup.js                   | Configuration file for authentication on the external service side
 | config.js                          | App Configuration file
 | db_connect.js                      | Database configuration file
 | middleware.js                      | Routes validation, checking and providing some important data
@@ -191,15 +194,15 @@ App configuration located in *config.js* file. Each field with possible values d
 
 #### Database
 
-Database is used to store Crowdin, Mailchimp OAuth tokens (for executing API requests) and Crowdin files to Mailchimp files mapping. By default, Postgres is used for production and Sqlite for local environment.
+Database is used to store Crowdin, Typeform OAuth tokens (for executing API requests) and Crowdin files to Typeform files mapping. By default, Postgres is used for production and Sqlite for local environment.
 
 If you want to use another DB, feel free to change it in *db_connect.js* file. For more about all possible databases read [Sequelize](https://sequelize.org/) docs.
 
 #### Authorization
 
-This example is using [Passport.js](http://www.passportjs.org/) for authentication on the Mailchimp side.
+This example is using custom authentication flow for the Typeform side.
 
-You can simply choose the authentication strategy you need in *passportSetup.js* file by replacing `passport-mailchimp` to your own. Also, you need to provide your own strategy in `passport.authenticate()` method calls.
+You can simply modify authentication strategy you need in *integration.js* file by replacing code to your own.
 
 #### Content management
 
@@ -253,7 +256,7 @@ There are few steps to push localized content into external service:
 - Implement translations upload in `updateIntegrationFile` method according to external service API requirements.
 
 ### Contributing
-If you find any problems or would like to suggest a feature, please feel free to file an issue on Github at [Issues Page](https://github.com/crowdin-community/crowdin-mailchimp-example/issues).
+If you find any problems or would like to suggest a feature, please feel free to file an issue on Github at [Issues Page](https://github.com/crowdin-community/crowdin-typeform-example/issues).
 
 Also, we are happy to accept contributions from community. For more details about how to contribute read the [CONTRIBUTING.md](/CONTRIBUTING.md) file.
 
@@ -262,7 +265,7 @@ Also, we are happy to accept contributions from community. For more details abou
 
 ### License
 ```
-The Crowdin-Mailchimp example is licensed under the MIT License. 
+The Crowdin-Typeform example is licensed under the MIT License. 
 See the LICENSE file distributed with this work for additional 
 information regarding copyright ownership.
 
