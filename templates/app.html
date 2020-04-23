@@ -286,7 +286,7 @@
     let el = document.querySelector('crowdin-simple-integration');
     document.querySelector('.top').innerHTML = `<crowdin-button icon-before="account_circle" onclick="integrationLogOut()">Change account</crowdin-button>`;
     el.setAttribute('integration-name', manifest.name);
-    el.setAttribute('integration-logo', '/assets/logo.png');
+    el.setAttribute('integration-logo', '/assets/logo.svg');
     getIntegrationFiles();
     getCrowdinFiles();
   }

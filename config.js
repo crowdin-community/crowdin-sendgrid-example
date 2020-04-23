@@ -20,7 +20,7 @@ const manifest = {
               "key": "typeform",
               "name": "Typeform",
               "description": "Translate your forms and surveys from Typeform to reach your audience in their native language",
-              "logo": "/assets/logo.png",
+              "logo": "/assets/logo.svg",
               "url": "/"
           }
       ]

@@ -20,8 +20,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 
 app.use("/polyfills", express.static(__dirname + '/polyfills'));
+app.use("/assets", express.static(__dirname + '/assets'));
 
-app.get('/assets/logo.png', (req, res) => res.sendFile(__dirname + '/assets/logo.png'));
+//app.get('/assets/logo.png', (req, res) => res.sendFile(__dirname + '/assets/logo.png'));
 
 app.get('/', middleware.requireAuthentication, (req, res) => res.sendFile(__dirname + '/templates/app.html'));
 
