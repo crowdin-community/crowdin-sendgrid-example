@@ -201,6 +201,7 @@
       })
       .then((res) => {
         manifest = res;
+        isInstalled();
         document.title = res.name;
         let el = document.querySelector('.i_w h1');
         if(!!el){
@@ -241,14 +242,11 @@
           el.innerHTML = '';
           el.appendChild(template.content.cloneNode(true));
           prepareComponent();
-          getProjectData();
         }
       }).catch(e => {
       catchRejection(e, 'Can\'t check instalation status');
     });
   }
-
-  isInstalled();
 
   function integrationLogin() {
     checkOrigin()
@@ -322,10 +320,9 @@
         return checkResponse(response);
       })
       .then((res) => {
-        setTimeout(() => {
-          el.setCrowdinFilesData(res);
-          el.setAttribute('is-crowdin-loading', false);
-        }, 500);
+        getProjectData();
+        el.setCrowdinFilesData(res);
+        el.setAttribute('is-crowdin-loading', false);
       })
       .catch(e => {
         el.setAttribute('is-crowdin-loading', false);
@@ -342,10 +339,8 @@
         return checkResponse(response);
       })
       .then((res) => {
-        setTimeout(() => {
-          let el = document.querySelector('crowdin-simple-integration');
-          el && el.setCrowdinLanguagesData(res.projectTargetLanguages);
-        }, 2000);
+        let el = document.querySelector('crowdin-simple-integration');
+        el && el.setCrowdinLanguagesData(res.projectTargetLanguages);
       })
       .catch(e => {
         catchRejection(e, 'Can\'t fetch project data');

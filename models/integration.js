@@ -35,7 +35,6 @@ Integration.getApiClient = (req, res) => {
         // if we don't find Integration, we can't create Integration API client. Exit
         return res.status(404).send();
       }
-      console.log(integration);
       // initialize Integration API client and connect it to response object
       res.integration = integration;
       res.integrationClient = createIntegrationClient({token: decryptData(integration.integrationToken)});

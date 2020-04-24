@@ -153,6 +153,7 @@ Organization.getOrganization = (res) => {
             client_secret: keys.crowdinClientSecret,
             refresh_token: decryptData(organization.refreshToken),
           };
+          console.log('expired');
           axios.post(keys.crowdinAuthUrl, payload)
             .then(response => {
               let params = {

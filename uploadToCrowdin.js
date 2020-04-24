@@ -43,7 +43,6 @@ function crowdinUpdate() {
                     return file.update({crowdinUpdatedAt: response.data.updatedAt, integrationUpdatedAt: f.integrationUpdatedAt})
                   })
                   .catch(() => {
-                    console.log(f);
 
                     return crowdinApi.sourceFilesApi.createFile(projectId, {
                       storageId: f.id,
