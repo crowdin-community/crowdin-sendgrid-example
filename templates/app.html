@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title></title>
-    <script src="https://pure-refuge-59195.herokuapp.com/dist/crowdin-web-components/crowdin-web-components.js"></script>
-    <script src="/polyfills/promise.js"></script>
+    <script src="https://crowdin-web-components.s3.amazonaws.com/crowdin-web-components.js"></script>
+
+  <script src="/polyfills/promise.js"></script>
     <script src="/polyfills/fetch.js"></script>
     <style type='text/css'>
         .i_w {
@@ -320,9 +321,9 @@
         return checkResponse(response);
       })
       .then((res) => {
-        getProjectData();
         el.setCrowdinFilesData(res);
         el.setAttribute('is-crowdin-loading', false);
+        getProjectData();
       })
       .catch(e => {
         el.setAttribute('is-crowdin-loading', false);
