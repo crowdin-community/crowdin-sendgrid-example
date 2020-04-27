@@ -290,6 +290,16 @@
     getCrowdinFiles();
   }
 
+  function setComponentData(res, key, attr) {
+    let el = document.querySelector('crowdin-simple-integration');
+    if(el[key]) {
+      el[key](res);
+      el.setAttribute(attr, false);
+    } else {
+      setTimeout(() => {setComponentData(res, key, attr)}, 100);
+    }
+  }
+
   function getIntegrationFiles() {
     let el = document.querySelector('crowdin-simple-integration');
     el.setAttribute('is-integration-loading', true);
@@ -301,8 +311,7 @@
         return checkResponse(response);
       })
       .then((res) => {
-        el.setIntegrationFilesData(res);
-        el.setAttribute('is-integration-loading', false);
+        setComponentData(res, 'setIntegrationFilesData', 'is-integration-loading');
       })
       .catch(e => {
         el.setAttribute('is-integration-loading', false);
@@ -321,8 +330,7 @@
         return checkResponse(response);
       })
       .then((res) => {
-        el.setCrowdinFilesData(res);
-        el.setAttribute('is-crowdin-loading', false);
+        setComponentData(res, 'setCrowdinFilesData', 'is-crowdin-loading');
         getProjectData();
       })
       .catch(e => {
@@ -340,8 +348,7 @@
         return checkResponse(response);
       })
       .then((res) => {
-        let el = document.querySelector('crowdin-simple-integration');
-        el && el.setCrowdinLanguagesData(res.projectTargetLanguages);
+        setComponentData(res.projectTargetLanguages, 'setCrowdinLanguagesData', 'is-crowdin-loading');
       })
       .catch(e => {
         catchRejection(e, 'Can\'t fetch project data');
