@@ -1,5 +1,5 @@
 const isDev = (process.env.NODE_ENV || 'development') !== 'production';
-const useCopyAuth = false;
+const useCopyAuth = true;
 
 module.exports = {
   baseUrl: isDev

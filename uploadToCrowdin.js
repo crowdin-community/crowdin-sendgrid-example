@@ -1,103 +1,76 @@
 const Mapping = require('./models/mapping');
-const { nodeTypes } = require('./helpers');
+const { nodeTypes, catchRejection } = require('./helpers');
 
 
 function crowdinUpdate() {
-  return (req, res) => {
-    const integrationClient = res.integrationClient;
-    const crowdinApi = res.crowdinApiClient;
-    const fileIds = req.body.filter(f => f.node_type === nodeTypes.FILE);
-    const projectId = res.origin.context.project_id;
+  return async (req, res) => {
+    try {
+      const integrationClient = res.integrationClient;
+      const crowdinApi = res.crowdinApiClient;
+      const fileIds = req.body.filter(f => f.node_type === nodeTypes.FILE);
+      const projectId = res.origin.context.project_id;
+      const [getListResponse, getListBody] = await integrationClient.request({ method: 'GET', url: '/v3/designs' });
+      if(getListResponse.statusCode !== 200) {
+        throw new Error(`cant fetch forms list statusCode: ${getListResponse.statusCode}`);
+      }
+      const integrationFilesList = getListBody.result.reduce((acc, item) => ({...acc, [item.id]: {...item}}), {});
+      const integrationFiles = await Promise.all(
+        fileIds.map(fid => integrationClient.request({ method: 'GET', url: `/v3/designs/${fid.id}` }))
+      );
+      const storageIds = await Promise.all(
+        integrationFiles.map(([s, f]) => crowdinApi.uploadStorageApi.addStorage(`${f.id}.html`, f.html_content))
+      );
 
-    let integrationFiles = [];
-    let integrationFilesList = {};
+      const addedFiles = storageIds.map((f, i) =>
+        ({
+          ...f.data,
+          title: integrationFiles[i][1].name,
+          integrationFileId: integrationFiles[i][1].id,
+          integrationUpdatedAt: integrationFilesList[integrationFiles[i][1].id].updated_at
+        })
+      );
 
-    integrationClient.request({
-      method: 'GET',
-      url: '/v3/designs'
-    })
-      .then(([response, body]) => {
-        if(response.statusCode !== 200) {
-          throw new Error(response.statusCode);
+      const uploadedFiles = await Promise.all(addedFiles.map( async f => {
+        const crowdinFile = await Mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}});
+        if(!!crowdinFile) {
+          try {
+            await crowdinApi.sourceFilesApi.getFile(projectId, crowdinFile.crowdinFileId);
+            const updatedFile = await crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, crowdinFile.crowdinFileId, {storageId: f.id});
+            return crowdinFile.update({crowdinUpdatedAt: updatedFile.data.updatedAt, integrationUpdatedAt: f.integrationUpdatedAt});
+          } catch(e) {
+            const newFile = await crowdinApi.sourceFilesApi.createFile(projectId, {
+              storageId: f.id,
+              name: f.fileName,
+              title: f.title
+            });
+            return crowdinFile.update({
+              integrationUpdatedAt: f.integrationUpdatedAt,
+              crowdinUpdatedAt: newFile.data.updatedAt,
+              crowdinFileId: newFile.data.id,
+            });
+          }
         } else {
-          integrationFilesList = body.result.reduce((acc, item) => ({...acc, [item.id]: {...item}}), {})
+          const newFile = await crowdinApi.sourceFilesApi.createFile(projectId, {
+            storageId: f.id,
+            name: f.fileName,
+            title: f.title
+          });
+
+          return Mapping.create({
+            domain: res.origin.domain,
+            projectId: projectId,
+            integrationUpdatedAt: f.integrationUpdatedAt,
+            crowdinUpdatedAt: newFile.data.updatedAt,
+            integrationFileId: f.integrationFileId,
+            crowdinFileId: newFile.data.id,
+          });
         }
-      })
-      .catch(e => console.log('cant fetch forms list', e));
-    Promise.all(
-      fileIds.map(fid => integrationClient.request({
-        method: 'GET',
-        url: `/v3/designs/${fid.id}`
-      }))
-    )
-      .then((values) => {
-        integrationFiles = values;
-        return Promise.all(
-          values.map(([s, f]) => crowdinApi.uploadStorageApi.addStorage(`${f.id}.html`, f.html_content))
-        )
-      })
-      .then(storageIds => {
-        const addedFiles = storageIds.map((f, i) =>
-          ({
-            ...f.data,
-            title: integrationFiles[i][1].name,
-            integrationFileId: integrationFiles[i][1].id,
-            integrationUpdatedAt: integrationFilesList[integrationFiles[i][1].id].updated_at
-          })
-        );
+      }));
 
-        return Promise.all(addedFiles.map(f => {
-          return Mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}})
-            .then(file => {
-              if(!!file) {
-                return crowdinApi.sourceFilesApi.getFile(projectId, file.crowdinFileId)
-                  .then(() => {
-                    return crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, file.crowdinFileId, {storageId: f.id})
-                  })
-                  .then(response => {
-                    return file.update({crowdinUpdatedAt: response.data.updatedAt, integrationUpdatedAt: f.integrationUpdatedAt})
-                  })
-                  .catch(() => {
-
-                    return crowdinApi.sourceFilesApi.createFile(projectId, {
-                      storageId: f.id,
-                      name: f.fileName,
-                      title: f.title
-                    })
-                      .then(response => {
-                        return file.update({
-                          integrationUpdatedAt: f.integrationUpdatedAt,
-                          crowdinUpdatedAt: response.data.updatedAt,
-                          crowdinFileId: response.data.id,
-                        })
-                      })
-                  });
-              } else {
-                return crowdinApi.sourceFilesApi.createFile(projectId, {
-                  storageId: f.id,
-                  name: f.fileName,
-                  title: f.title
-                })
-                  .then(response => {
-                    return Mapping.create({
-                      domain: res.origin.domain,
-                      projectId: projectId,
-                      integrationUpdatedAt: f.integrationUpdatedAt,
-                      crowdinUpdatedAt: response.data.updatedAt,
-                      integrationFileId: f.integrationFileId,
-                      crowdinFileId: response.data.id,
-                    })
-                  })
-              }
-            })
-        }))
-      })
-      .then(responses => {
-        res.json(responses);
-      })
-      .catch(e => {
-        return res.status(500).send(e);
-      });
+      res.json(uploadedFiles);
+    } catch(e) {
+      catchRejection('Cant upload files to Crowdin', res)(e);
+    }
   }
 }
 
