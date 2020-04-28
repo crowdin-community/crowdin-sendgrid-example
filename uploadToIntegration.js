@@ -2,37 +2,37 @@ const axios = require('axios').default;
 
 const { catchRejection } = require('./helpers');
 
-const supportedLanguages = [
-  { name: 'Catalan', code: 'ca' },
-  { name: 'Chinese (simplified)', code: 'zh-CN' },
-  { name: 'Chinese (traditional)', code: 'zh-TW' },
-  { name: 'Croatian', code: 'hr' },
-  { name: 'Czech', code: 'cs' },
-  { name: 'Danish', code: 'da' },
-  { name: 'Dutch', code: 'nl' },
-  { name: 'English', code: 'en' },
-  { name: 'Estonian', code: 'et' },
-  { name: 'Finnish', code: 'fi' },
-  { name: 'French', code: 'fr' },
-  { name: 'Greek', code: 'el' },
-  { name: 'German', code: 'de' },
-  { name: 'Hungarian', code: 'hu' },
-  { name: 'Italian', code: 'it' },
-  { name: 'Japanese', code: 'ja' },
-  { name: 'Korean', code: 'ko' },
-  { name: 'Norwegian', code: 'no' },
-  { name: 'Polish', code: 'pl' },
-  { name: 'Portuguese', code: 'pt' },
-  { name: 'Russian', code: 'ru' },
-  { name: 'Spanish', code: 'es' },
-  { name: 'Swedish', code: 'sv' },
-  { name: 'Turkish', code: 'tr' },
-  { name: 'Ukrainian', code: 'uk' }
-].map(l => l.code);
+// const supportedLanguages = [
+//   { name: 'Catalan', code: 'ca' },
+//   { name: 'Chinese (simplified)', code: 'zh-CN' },
+//   { name: 'Chinese (traditional)', code: 'zh-TW' },
+//   { name: 'Croatian', code: 'hr' },
+//   { name: 'Czech', code: 'cs' },
+//   { name: 'Danish', code: 'da' },
+//   { name: 'Dutch', code: 'nl' },
+//   { name: 'English', code: 'en' },
+//   { name: 'Estonian', code: 'et' },
+//   { name: 'Finnish', code: 'fi' },
+//   { name: 'French', code: 'fr' },
+//   { name: 'Greek', code: 'el' },
+//   { name: 'German', code: 'de' },
+//   { name: 'Hungarian', code: 'hu' },
+//   { name: 'Italian', code: 'it' },
+//   { name: 'Japanese', code: 'ja' },
+//   { name: 'Korean', code: 'ko' },
+//   { name: 'Norwegian', code: 'no' },
+//   { name: 'Polish', code: 'pl' },
+//   { name: 'Portuguese', code: 'pt' },
+//   { name: 'Russian', code: 'ru' },
+//   { name: 'Spanish', code: 'es' },
+//   { name: 'Swedish', code: 'sv' },
+//   { name: 'Turkish', code: 'tr' },
+//   { name: 'Ukrainian', code: 'uk' }
+// ].map(l => l.code);
 
-function typeformUpdate() {
+function integrationUpdate() {
   return (req, res) => {
-    const typeformAPI = res.integrationClient;
+    const integrationClient = res.integrationClient;
     const crowdinApi = res.crowdinApiClient;
     const formsTranslations = req.body;
     const projectId = res.origin.context.project_id;
@@ -46,17 +46,20 @@ function typeformUpdate() {
     let filesById = {};
     let fullFormsById = {};
     let integrationFilesList = [];
-    typeformAPI.forms.list()
-      .then(list => {
-        integrationFilesList = list.items;
+    integrationClient.request({
+      method: 'GET',
+      url: '/v3/designs'
+    })
+      .then( ([response, body]) => {
+        integrationFilesList = body.result;
         return Promise.all(Object.keys(formsTranslations).map( fId => crowdinApi.sourceFilesApi.getFile(projectId, fId)))
       })
       .then( responses => {
         filesById = responses.reduce((acc,fileData) => ({...acc, [`${fileData.data.id}`]: fileData.data}), {});
-        return Promise.all(Object.values(filesById).map(({name}) => typeformAPI.forms.get({uid: name.replace('.json','')})))
+        return Promise.all(Object.values(filesById).map(({name}) => integrationClient.request({method: 'GET', url: `/v3/designs/${name.replace('.html','')}`})))
       })
       .then( responses => {
-        fullFormsById = responses.reduce((acc, form) => ({...acc, [`${form.id}`]: form}), {});
+        fullFormsById = responses.reduce((acc, [status, form]) => ({...acc, [`${form.id}`]: form}), {});
         return Promise.all(translations.map(t => crowdinApi.translationsApi.buildProjectFileTranslation(projectId, t.fileId, {targetLanguageId: t.languageId, exportAsXliff: false})))
       })
       .then( responses => {
@@ -64,41 +67,31 @@ function typeformUpdate() {
       })
       .then( buffers => {
         const translatedFilesData = buffers.map(b => b.data);
+
         return Promise.all(translations.map((t, index) => {
           const fileName = `${filesById[t.fileId].title}/${t.languageId}`;
-          const integrationTranslationFile = integrationFilesList.find(f => f.title === fileName);
+          const integrationTranslationFile = integrationFilesList.find(f => f.name === fileName);
+
           if(integrationTranslationFile){
-            return typeformAPI.forms.get({uid: integrationTranslationFile.id})
-              .then(form => {
-                let formToUpdate = form;
-                formToUpdate = updateForm(formToUpdate, translatedFilesData[index]);
-                  return typeformAPI.forms.update({uid: formToUpdate.id, override: true, data: {...formToUpdate}});
-              })
+            return integrationClient.request({
+              method: 'PATCH',
+              url: `/v3/designs/${integrationTranslationFile.id}`,
+              body: {
+                html_content: translatedFilesData[index],
+                generate_plain_content: true,
+              }
+            })
           } else {
-            let form = fullFormsById[filesById[t.fileId].name.replace('.json','')];
-            delete form.id;
-
-            form.title = fileName;
-            form.settings.language = supportedLanguages.includes(t.languageId) ? t.languageId : 'en';
-            form = updateForm(form, translatedFilesData[index]);
-            // remove ids to create form ------------------------------>
-            // todo: refactor next code to recursive functions
-            form.fields.forEach(f => {
-              delete f.id;
-              if((f.properties || {}).fields){
-                f.properties.fields.forEach(field => {
-                  delete field.id;
-                  if((field.properties || {}).choices){
-                    field.properties.choices.forEach(choice => delete choice.id);
-                  }
-                });
+            return integrationClient.request({
+              method: 'POST',
+              url: `/v3/designs`,
+              body: {
+                name: fileName,
+                html_content: translatedFilesData[index],
+                plain_content: "",
+                generate_plain_content: true,
               }
-              if((f.properties || {}).choices){
-                f.properties.choices.forEach(choice => delete choice.id);
-              }
-            });
-
-            return typeformAPI.forms.create({ data: {...form} });
+            })
           }
         }));
       })
@@ -109,65 +102,4 @@ function typeformUpdate() {
   }
 }
 
-function updateForm(form, translations) {
-  Object.keys(translations).forEach(trKey => {
-    if(trKey.endsWith('_field')) {
-      const txt = translations[trKey];
-      const ref = trKey.split('_field')[0];
-      const fields = form.fields || [];
-      for(let i = 0; i < fields.length; i++) {
-        if(fields[i].ref === ref) {
-          form.fields[i].title = txt.toString('utf8');
-        }
-      }
-      return;
-    }
-    if(trKey.endsWith('_button_welcome_screen')) {
-      const txt = translations[trKey];
-      const ref = trKey.split('_button_welcome_screen')[0];
-      const wScreens = form.welcome_screens || [];
-      for(let i = 0; i < wScreens.length; i++) {
-        if(wScreens[i].ref === ref) {
-          form.welcome_screens[i].properties.button_text = txt;
-        }
-      }
-      return;
-    }
-    if(trKey.endsWith('_welcome_screen')) {
-      const txt = translations[trKey];
-      const ref = trKey.split('_welcome_screen')[0];
-      const wScreens = form.welcome_screens || [];
-      for(let i = 0; i < wScreens.length; i++) {
-        if(wScreens[i].ref === ref) {
-          form.welcome_screens[i].title = txt;
-        }
-      }
-      return;
-    }
-    if(trKey.endsWith('_button_thankyou_screens')) {
-      const txt = translations[trKey];
-      const ref = trKey.split('_button_thankyou_screens')[0];
-      const tScreens = form.thankyou_screens || [];
-      for(let i = 0; i < tScreens.length; i++) {
-        if(tScreens[i].ref === ref) {
-          form.thankyou_screens[i].properties.button_text = txt;
-        }
-      }
-      return;
-    }
-    if(trKey.endsWith('_thankyou_screens')) {
-      const txt = translations[trKey];
-      const ref = trKey.split('_thankyou_screens')[0];
-      const tScreens = form.thankyou_screens || [];
-      for(let i = 0; i < tScreens.length; i++) {
-        if(tScreens[i].ref === ref) {
-          form.thankyou_screens[i].title = txt;
-        }
-      }
-      return;
-    }
-  });
-  return form;
-}
-
-module.exports = typeformUpdate;
+module.exports = integrationUpdate;

@@ -1,8 +1,8 @@
 const keys = require('./keys');
 
 const manifest = {
-  "identifier": "type-form-app",
-  "name": "Typeform",
+  "identifier": "sendgrid-app",
+  "name": "SendGrid",
   "baseUrl": keys.baseUrl,
   "authentication": {
       "type": "authorization_code",
@@ -17,25 +17,14 @@ const manifest = {
   "modules": {
       "integrations": [
           {
-              "key": "typeform",
-              "name": "Typeform",
-              "description": "Translate your forms and surveys from Typeform to reach your audience in their native language",
+              "key": "sendgrid",
+              "name": "SendGrid",
+              "description": "Upload and localize your marketing content from SendGrid",
               "logo": "/assets/logo.svg",
               "url": "/"
           }
       ]
   },
-  scope: [
-    'forms:read',
-    'accounts:read',
-    'themes:read',
-    'responses:read',
-    'workspaces:read',
-    'forms:write',
-    'themes:write',
-    'responses:write',
-    'workspaces:write',
-  ].join('+')
 };
 
 module.exports = manifest;

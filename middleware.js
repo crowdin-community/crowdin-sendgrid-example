@@ -21,7 +21,7 @@ module.exports = {
         res.status(401).send('Cant verify');
       } else {
         res.origin = decoded;
-        res.clientId = `${res.origin.domain}__${res.origin.context.project_id}`;
+        res.clientId = `${res.origin.domain}__${res.origin.context.project_id}__${res.origin.sub}`;
         return next();
       }
     });

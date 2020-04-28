@@ -62,9 +62,10 @@ Organization.getProjectFiles = (db) => (req, res) => {
   Mapping.findAll({where: { projectId: projectId, domain: res.origin.domain } })
     .then(uploadedFiles => {
       if(!uploadedFiles || !uploadedFiles.length){
-        res.json([]);
+        return new Promise(resolve => resolve([]));
+      } else {
+        return Promise.all(uploadedFiles.map(f => crowdinApi.sourceFilesApi.getFile(projectId, f.crowdinFileId).catch(e => ({}))))
       }
-      return Promise.all(uploadedFiles.map(f => crowdinApi.sourceFilesApi.getFile(projectId, f.crowdinFileId).catch(e => ({}))))
     })
     .then(filesRes => {
       files = filesRes.filter(fr => !!fr.data).map(({data}) => data).map(({directoryId, branchId, name, title, ...rest}) => ({

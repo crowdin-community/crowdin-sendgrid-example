@@ -40,6 +40,16 @@
             height: auto;
         }
 
+        .login crowdin-input {
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .login .inputs {
+            margin-bottom: 24px;
+            text-align: left;
+        }
+
         .login crowdin-h4 {
             margin: 8px 0 16px;
         }
@@ -59,6 +69,10 @@
             <crowdin-card is-shadowed is-padding-lg class="login">
                 <img alt='Integration logo' src='/assets/logo.svg'/>
                 <crowdin-h4 id="integration-name">Integration name</crowdin-h4>
+                <div class="inputs">
+                    <!--<crowdin-input id="apiurl" label="SendGrid API URL" help-text="You need create some api key and url on ...." value=""></crowdin-input>-->
+                    <crowdin-input id="apitoken" label="SendGrid API Token" help-text="You need create some api key and url on ...." value=""></crowdin-input>
+                </div>
                 <crowdin-button
                     outlined
                     icon-after="arrow_forward"
@@ -250,18 +264,20 @@
   }
 
   function integrationLogin() {
+    const token = document.querySelector('#apitoken').getAttribute('value');
     checkOrigin()
       .then(restParams => {
-        return fetch('/integration-login' + restParams);
+        return fetch('/integration-login' + restParams, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token})
+        });
       })
       .then((response) => {
         return checkResponse(response);
       })
-      .then((res) => {
-        var left = screen.width / 2 - 300;
-        var top = screen.height / 2 - 350;
-        var config = 'toolbar=no, menubar=no, width=600, height=700, top=' + top + ', left=' + left;
-        window.open(res.url, manifest.name, config);
+      .then(() => {
+        isInstalled();
       }).catch(e => {
       catchRejection(e, 'Can\'t fetch integration login url');
     });
@@ -355,8 +371,8 @@
       });
   }
 
-  function crowdinFilesFolderToggled (event) {
-    if(event.detail.componentId === 'crowdin-files' && event.detail.isOpen) {
+  function crowdinFilesFolderToggled(event) {
+    if(event.detail.componentId === 'crowdin-files' && event.detail.isOpen && event.detail.type === '1') {
       getFileProgress(event.detail.id);
     }
   }
@@ -392,9 +408,8 @@
       .then((response) => {
         return checkResponse(response);
       })
-      .then(res => {
+      .then(() => {
         getLoginTemplate();
-        integrationLogin();  // immediately show login form again
       })
       .catch(e => {
         catchRejection(e, 'Looks like you are not logged in');
@@ -415,7 +430,7 @@
       document.querySelector('crowdin-toasts').pushToasts(['Select files that will be downloaded to Crowdin']);
       return;
     }
-    const fileIds = event.detail.map(file => file.id);
+    const fileIds = event.detail;
     let el = document.querySelector('crowdin-simple-integration');
     el.setAttribute('is-to-crowdin-process', true);
     checkOrigin()

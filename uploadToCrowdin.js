@@ -1,33 +1,48 @@
 const Mapping = require('./models/mapping');
+const { nodeTypes } = require('./helpers');
+
 
 function crowdinUpdate() {
   return (req, res) => {
-    const typeformAPI = res.integrationClient;
+    const integrationClient = res.integrationClient;
     const crowdinApi = res.crowdinApiClient;
-    const fileIds = req.body;
+    const fileIds = req.body.filter(f => f.node_type === nodeTypes.FILE);
     const projectId = res.origin.context.project_id;
 
     let integrationFiles = [];
     let integrationFilesList = {};
 
-    typeformAPI.forms.list()
-      .then(list => integrationFilesList = list.items.reduce((acc, item) => ({...acc, [item.id]: {...item}}), {}))
+    integrationClient.request({
+      method: 'GET',
+      url: '/v3/designs'
+    })
+      .then(([response, body]) => {
+        if(response.statusCode !== 200) {
+          throw new Error(response.statusCode);
+        } else {
+          integrationFilesList = body.result.reduce((acc, item) => ({...acc, [item.id]: {...item}}), {})
+        }
+      })
       .catch(e => console.log('cant fetch forms list', e));
-
-    Promise.all(fileIds.map(fid => typeformAPI.forms.get({uid: fid})))
+    Promise.all(
+      fileIds.map(fid => integrationClient.request({
+        method: 'GET',
+        url: `/v3/designs/${fid.id}`
+      }))
+    )
       .then((values) => {
         integrationFiles = values;
         return Promise.all(
-          values.map(f => crowdinApi.uploadStorageApi.addStorage(`${f.id}.json`, JSON.stringify( getTranslatableStrings(f))))
+          values.map(([s, f]) => crowdinApi.uploadStorageApi.addStorage(`${f.id}.html`, f.html_content))
         )
       })
       .then(storageIds => {
-        addedFiles = storageIds.map((f, i) =>
+        const addedFiles = storageIds.map((f, i) =>
           ({
             ...f.data,
-            title: integrationFiles[i].title,
-            integrationFileId: integrationFiles[i].id,
-            integrationUpdatedAt: integrationFilesList[integrationFiles[i].id].last_updated_at
+            title: integrationFiles[i][1].name,
+            integrationFileId: integrationFiles[i][1].id,
+            integrationUpdatedAt: integrationFilesList[integrationFiles[i][1].id].updated_at
           })
         );
 
@@ -84,38 +99,6 @@ function crowdinUpdate() {
         return res.status(500).send(e);
       });
   }
-}
-
-function getTranslatableStrings(form) {
-  let result = {};
-  if(form.fields) {
-    form.fields
-      .filter(field => field.ref && field.title)
-      .forEach(field => {
-        result[field.ref + '_field'] = field.title;
-      });
-  }
-  if(form.welcome_screens) {
-    form.welcome_screens
-      .filter(wScreen => wScreen.ref && wScreen.title)
-      .forEach(wScreen => {
-        result[wScreen.ref + '_welcome_screen'] = wScreen.title;
-        if(wScreen.properties && wScreen.properties.button_text) {
-          result[wScreen.ref + '_button_welcome_screen'] = wScreen.properties.button_text;
-        }
-      });
-  }
-  if(form.thankyou_screens) {
-    form.thankyou_screens
-      .filter(tScreen => tScreen.ref && tScreen.title)
-      .forEach(tScreen => {
-        result[tScreen.ref + '_thankyou_screens'] = tScreen.title;
-        if(tScreen.properties && tScreen.properties.button_text) {
-          result[tScreen.ref + '_button_thankyou_screens'] = tScreen.properties.button_text;
-        }
-      });
-  }
-  return result;
 }
 
 module.exports = crowdinUpdate;

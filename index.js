@@ -5,10 +5,10 @@ const bodyParser = require('body-parser');
 const db = require('./db_connect');
 const config = require('./config');
 const { catchRejection } = require('./helpers');
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8001;
 const middleware = require('./middleware.js');
 const crowdinUpdate = require('./uploadToCrowdin');
-const typeformUpdate = require('./uploadToIntegration');
+const integrationUpdate = require('./uploadToIntegration');
 
 const Mapping = require('./models/mapping');
 const Integration = require('./models/integration');
@@ -21,8 +21,6 @@ app.use(bodyParser.urlencoded({extended: false}));
 
 app.use("/polyfills", express.static(__dirname + '/polyfills'));
 app.use("/assets", express.static(__dirname + '/assets'));
-
-//app.get('/assets/logo.png', (req, res) => res.sendFile(__dirname + '/assets/logo.png'));
 
 app.get('/', middleware.requireAuthentication, (req, res) => res.sendFile(__dirname + '/templates/app.html'));
 
@@ -42,7 +40,7 @@ app.get('/status', middleware.requireAuthentication, (req, res) => {
     .catch(catchRejection('Some problem to fetch organization or integration', res))
   });
 
-app.get('/integration-login', middleware.requireAuthentication, Integration.getLoginUrl());
+app.post('/integration-login', middleware.requireAuthentication, Integration.Login());
 
 app.get('/integration-log-out', middleware.requireAuthentication, middleware.withIntegration, (req, res) => {
   res.integration.destroy()
@@ -50,11 +48,9 @@ app.get('/integration-log-out', middleware.requireAuthentication, middleware.wit
     .catch(catchRejection('Cant destroy integration', res));
 });
 
-app.get('/integration-token', Integration.setupToken());
-
 app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, Integration.getData());
 
-app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, middleware.withIntegration, Organization.getProjectFiles(db));
+app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getProjectFiles(db));
 
 app.post('/installed', Organization.install());
 
@@ -64,7 +60,7 @@ app.get('/get-project-data', middleware.requireAuthentication, middleware.withCr
 
 app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate(db));
 
-app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, typeformUpdate());
+app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, integrationUpdate());
 
 // ------------------------------ start routes for debugging only ---------------------------
 if(process.env.NODE_ENV !== 'production') {
