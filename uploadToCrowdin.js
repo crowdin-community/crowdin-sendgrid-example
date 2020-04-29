@@ -28,20 +28,17 @@ function crowdinUpdate() {
           integrationFileId: integrationFiles[i][1].id,
           integrationUpdatedAt: integrationFilesList[integrationFiles[i][1].id].updated_at,
           categories: JSON.stringify(integrationFilesList[integrationFiles[i][1].id].categories),
-          editor: integrationFilesList[integrationFiles[i][1].id].editor,
           subject: integrationFilesList[integrationFiles[i][1].id].subject,
         })
       );
 
       const uploadedFiles = await Promise.all(addedFiles.map( async f => {
         const crowdinFile = await Mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}});
-        console.log(f);
         if(!!crowdinFile) {
           try {
             await crowdinApi.sourceFilesApi.getFile(projectId, crowdinFile.crowdinFileId);
             const updatedFile = await crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, crowdinFile.crowdinFileId, {storageId: f.id});
             return crowdinFile.update({
-              editor: f.editor,
               subject: f.subject,
               categories: f.categories,
               crowdinUpdatedAt: updatedFile.data.updatedAt,
@@ -58,7 +55,6 @@ function crowdinUpdate() {
               crowdinUpdatedAt: newFile.data.updatedAt,
               crowdinFileId: newFile.data.id,
               categories: f.categories,
-              editor: f.editor,
               subject: f.subject,
             });
           }
@@ -77,7 +73,6 @@ function crowdinUpdate() {
             integrationFileId: f.integrationFileId,
             crowdinFileId: newFile.data.id,
             categories: f.categories,
-            editor: f.editor,
             subject: f.subject,
           });
         }
