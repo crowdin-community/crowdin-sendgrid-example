@@ -31,7 +31,7 @@ const Mapping = db.define('mapping', {
   subject: Sequelize.STRING,
 });
 
-Mapping.sync({force: true});
+// Mapping.sync({force: true});
 
 // Get records of uploaded files from integration to Crowdin
 Mapping.getFilesByDomainProjectId= function(res) {
