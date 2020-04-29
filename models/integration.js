@@ -32,17 +32,24 @@ Integration.getApiClient = async (req, res) => {
 
 Integration.Login = () => async (req, res) => {
   try {
+    createIntegrationClient.setApiKey(req.body.token);
+    try{
+      const [requestStatus, body] = await createIntegrationClient.request({ method: 'GET', url: '/v3/designs' });
+    } catch(e) {
+      return res.status(200).json({error: 'Api key is not valid!'});
+    }
     const integration = await Integration.findOne({where: {uid: res.clientId}});
     const params = {
       integrationToken: encryptData(req.body.token),
     };
+    let result = null;
     if(integration) {
-      await integration.update(params);
+      result = await integration.update(params);
     } else {
       params.uid = res.clientId;
-      await Integration.create(params);
+      result = await Integration.create(params);
     }
-    res.status(204).send();
+    res.status(200).json(result);
   } catch(e) {
     catchRejection('Cant update token', res)(e)
   }

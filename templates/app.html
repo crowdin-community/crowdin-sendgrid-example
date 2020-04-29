@@ -276,10 +276,14 @@
       .then((response) => {
         return checkResponse(response);
       })
-      .then(() => {
-        isInstalled();
+      .then((res) => {
+        if(!!res.error){
+          showToast(res.error);
+        } else {
+          isInstalled();
+        }
       }).catch(e => {
-      catchRejection(e, 'Can\'t fetch integration login url');
+      catchRejection(e, 'Api key is not stored');
     });
   }
 
