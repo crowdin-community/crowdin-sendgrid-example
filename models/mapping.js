@@ -26,7 +26,10 @@ const Mapping = db.define('mapping', {
   integrationUpdatedAt: {
     type: Sequelize.STRING,
     allowNull: false,
-  }
+  },
+  categories: Sequelize.STRING,
+  editor: Sequelize.STRING,
+  subject: Sequelize.STRING,
 });
 
 // Get records of uploaded files from integration to Crowdin

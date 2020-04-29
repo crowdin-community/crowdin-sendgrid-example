@@ -26,31 +26,30 @@ app.get('/', middleware.requireAuthentication, (req, res) => res.sendFile(__dirn
 
 app.get('/manifest.json', (req, res) => res.json(_.pick(config, 'identifier', 'name', 'baseUrl', 'authentication', 'events', 'scopes', 'modules')));
 
-app.get('/status', middleware.requireAuthentication, (req, res) => {
-  let status = {isInstalled: false, isLoggedIn: false};
-  Organization.findOne({where: {uid: res.origin.domain}})
-    .then(organization => {
-      status.isInstalled = !!organization;
-      return Integration.findOne({where: {uid: res.clientId}})
-    })
-    .then(integration => {
-      status.isLoggedIn = !!integration;
-      return res.json(status);
-    })
-    .catch(catchRejection('Some problem to fetch organization or integration', res))
-  });
+app.get('/status', middleware.requireAuthentication, async (req, res) => {
+  try {
+    const organization = await Organization.findOne({where: {uid: res.origin.domain}});
+    const integration = await Integration.findOne({where: {uid: res.clientId}});
+    res.json({isInstalled: !!organization, isLoggedIn: !!integration});
+  } catch(e) {
+    catchRejection('Some problem to fetch organization or integration', res)(e);
+  }
+});
 
 app.post('/integration-login', middleware.requireAuthentication, Integration.Login());
 
-app.get('/integration-log-out', middleware.requireAuthentication, middleware.withIntegration, (req, res) => {
-  res.integration.destroy()
-    .then(() => res.status(204).send())
-    .catch(catchRejection('Cant destroy integration', res));
+app.get('/integration-log-out', middleware.requireAuthentication, middleware.withIntegration, async (req, res) => {
+  try {
+    await res.integration.destroy();
+    res.status(204).send()
+  } catch(e) {
+    catchRejection('Cant destroy integration', res)(e);
+  }
 });
 
 app.get('/integration-data', middleware.requireAuthentication, middleware.withIntegration, Integration.getData());
 
-app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getProjectFiles(db));
+app.get('/crowdin-data', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getProjectFiles());
 
 app.post('/installed', Organization.install());
 
@@ -58,32 +57,37 @@ app.post('/get-file-progress', middleware.requireAuthentication, middleware.with
 
 app.get('/get-project-data', middleware.requireAuthentication, middleware.withCrowdinToken, Organization.getProjectData());
 
-app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate(db));
+app.post('/upload-to-crowdin', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, crowdinUpdate());
 
 app.post('/upload-to-integration', middleware.requireAuthentication, middleware.withIntegration, middleware.withCrowdinToken, integrationUpdate());
 
 // ------------------------------ start routes for debugging only ---------------------------
 if(process.env.NODE_ENV !== 'production') {
-  app.get('/mapping', (req, res) => {
-    Mapping.findAll()
-      .then(r => res.json(r))
-      .catch(catchRejection('Cant fetch mappings', res));
+  app.get('/mapping', async (req, res) => {
+    try {
+      const mappedFiles = await Mapping.findAll();
+      res.json(mappedFiles);
+    } catch(e) {
+      catchRejection('Cant fetch mappings', res)(e);
+    }
   });
 
-  app.get('/organizations', (req, res) => {
-    Organization.findAll()
-    .then(organizations => {
+  app.get('/organizations', async (req, res) => {
+    try {
+      const organizations = await Organization.findAll()
       res.json(organizations);
-    })
-    .catch(catchRejection('Cnat fetch organizations', res));
+    } catch(e) {
+      catchRejection('Cnat fetch organizations', res)(e);
+    }
   });
 
-  app.get('/integrations', (req, res) => {
-    Integration.findAll()
-      .then(integrations => {
-        res.json(integrations);
-      })
-      .catch(catchRejection('Cant fetch integrations', res));
+  app.get('/integrations', async (req, res) => {
+    try {
+      const integrations = await Integration.findAll();
+      res.json(integrations);
+    } catch(e) {
+      catchRejection('Cant fetch integrations', res)(e);
+    }
   });
 }
 // ------------------------------ end routes for debugging only ---------------------------
