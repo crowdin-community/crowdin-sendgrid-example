@@ -49,28 +49,27 @@ git clone https://github.com/crowdin-community/crowdin-sendgrid-example.git
    npm install
    ```
 
-2. Create `keys.js` file:
-
-    ```console
-    cp keys.sample.js keys.js
-    ```
-
-3. Open `keys.js` file and fill in the following credentials:
-
-    | Variable                  | Description |
-    |---------------------------|-------------|
-    | `crowdinClientId`<br>`crowdinClientSecret`| [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret
-    | `UniqueCryptoSecret` | Unique random string. Will be used to encrypt data in DB
-
-4. Start Node server (default port is 8000):
-
-    - Use [ngrok](https://ngrok.com/) to make your server public:
+2. Use [ngrok](https://ngrok.com/) to make your server public:
 
     ```console
     ngrok http 8000
     ```
 
-    - Open `keys.js` file and fill in `<your_ngrok_tunnel>`
+3. Create `keys.js` file:
+
+    ```console
+    cp keys.sample.js keys.js
+    ```
+
+4. Open `keys.js` file and fill in the following values:
+
+    | Variable                  | Description |
+    |---------------------------|-------------|
+    | `<your_ngrok_tunnel>` | Your NGROK tunnel hash, started in step 2
+    | `crowdinClientId`<br>`crowdinClientSecret`| [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret. App Callback URL - `https://<your_ngrok_tunnel>.ngrok.io/installed`
+    | `UniqueCryptoSecret` | Unique random string. Will be used to encrypt data in DB
+
+5. Start Node server (default port is 8000):
 
     - Run the command below in the App directory:
 
@@ -110,8 +109,6 @@ cd crowdin-sendgrid-example
 cp keys.sample.js keys.js
 ```
 
-- Open `keys.js` file and fill in you `<app_name>`
-
 - Create Heroku App:
 
 ```console
@@ -124,14 +121,22 @@ heroku create <app_name>
 heroku addons:create heroku-postgresql:hobby-dev
 ```
 
-- Navigate to your App settings and define the following Config Vars:
+- Open `keys.js` file and fill in your `<app_name>`
+
+- Navigate to your App on Heroku, then go to the *Settings* tab and define the following *Config Vars*:
 
 | Variable                    | Description                                                                           |
 |--------------------------------------------------------|---------------------------------------------------------------------------------------|
-| `CROWDIN_CLIENT_ID`<br>`CROWDIN_CLIENT_SECRET`         | [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret
+| `CROWDIN_CLIENT_ID`<br>`CROWDIN_CLIENT_SECRET`         | [Crowdin OAuth](https://support.crowdin.com/enterprise/creating-oauth-app/) Client ID and Client Secret. App Callback URL  - `https://<app_name>.herokuapp.com/installed`
 | `CRYPTO_SECRET`                                        | Unique random string. Will be used to encrypt data in DB
 
-Also you can fill in appropriate variables in `keys.js` file instead of defining environment variables.
+Also, you can fill in appropriate variables in `keys.js` file instead of defining environment variables.
+
+- Commit your changes:
+
+```console
+git commit -am "Setup"
+```
 
 - Deploy your code:
 

@@ -1,7 +1,7 @@
 {
-  "name": "crowdin-apps",
+  "name": "crowdin-sendgrid-example",
   "version": "1.0.0",
-  "description": "",
+  "description": "An example to showcase the integration of SendGrid and Crowdin",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -9,7 +9,7 @@
     "dev": "nodemon index.js"
   },
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@crowdin/crowdin-api-client": "^1.5.6",
     "@sendgrid/client": "^7.0.1",

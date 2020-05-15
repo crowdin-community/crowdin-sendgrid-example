@@ -72,7 +72,7 @@ Organization.getProjectFiles = () => async (req, res) => {
       }));
     }
 
-    //  -------------------------------    all fiiles without mapping -----------------------------------------
+    //  -------------------------------    all files without mapping -----------------------------------------
     // const [foldersRes, filesRes, branchesRes] = await Promise.all([
     //   crowdinApi.sourceFilesApi.listProjectDirectories(projectId, undefined, undefined, 500),
     //   crowdinApi.sourceFilesApi.listProjectFiles(projectId, undefined, undefined, 500),
