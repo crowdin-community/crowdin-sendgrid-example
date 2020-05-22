@@ -1,5 +1,6 @@
 const axios = require('axios').default;
 
+const { emitEvent } = require('./sockets');
 const Mapping = require('./models/mapping');
 const { catchRejection } = require('./helpers');
 
@@ -66,7 +67,15 @@ function integrationUpdate() {
         }
       }));
 
-      res.status(200).json(uploadedFiles);
+      if(!res.headersSent) {
+        return res.status(200).json(uploadedFiles);
+      }
+
+      emitEvent({
+        error: false,
+        refreshIntegration: true,
+        message: 'Async files upload to SendGrid finished',
+      }, res);
     } catch(e) {
       catchRejection('Cant upload files to integration', res)(e);
     }

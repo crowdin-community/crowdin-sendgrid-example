@@ -128,6 +128,7 @@ Organization.getOrganization = (res) => {
       }
       const isExpired = +organization.expire < +new Date().getTime() / 1000;
       if(!isExpired) {
+        res.crowdinToken = decryptData(organization.accessToken);
         res.crowdinApiClient = new crowdin({
           token: decryptData(organization.accessToken),
           organization: organization.uid,
@@ -145,6 +146,7 @@ Organization.getOrganization = (res) => {
           accessToken: encryptData(credentials.data.access_token),
           expire: (new Date().getTime() / 1000) + credentials.data.expires_in
         });
+        res.crowdinToken = decryptData(updatedOrg.accessToken);
         res.crowdinApiClient = new crowdin({
           token: decryptData(updatedOrg.accessToken),
           organization: updatedOrg.uid,

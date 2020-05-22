@@ -6,6 +6,7 @@ const db = require('./db_connect');
 const config = require('./config');
 const { catchRejection } = require('./helpers');
 const PORT = process.env.PORT || 8001;
+const { io } = require('./sockets');
 const middleware = require('./middleware.js');
 const crowdinUpdate = require('./uploadToCrowdin');
 const integrationUpdate = require('./uploadToIntegration');
@@ -93,7 +94,8 @@ if(process.env.NODE_ENV !== 'production') {
 // ------------------------------ end routes for debugging only ---------------------------
 
 db.sync({force: false}).then(function() {
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Crowdin apps listening on ${PORT}! Good luck!!!`);
   });
+  io.attach(server);
 });
