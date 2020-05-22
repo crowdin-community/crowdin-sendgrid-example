@@ -22,6 +22,11 @@ module.exports = {
       } else {
         res.origin = decoded;
         res.clientId = `${res.origin.domain}__${res.origin.context.project_id}__${res.origin.sub}`;
+        setTimeout(() => {
+          if(!res.headersSent) {
+            res.status(503).json({ error: 'Response took too much time. \nIt will continue running on background'})
+          }
+        }, 25000);
         next();
       }
     });

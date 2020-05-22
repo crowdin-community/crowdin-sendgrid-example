@@ -1,3 +1,7 @@
+const axios = require('axios');
+const { PatchOperation } = require('@crowdin/crowdin-api-client');
+
+const { emitEvent } = require('./sockets');
 const Mapping = require('./models/mapping');
 const { nodeTypes, catchRejection } = require('./helpers');
 
@@ -37,6 +41,18 @@ function crowdinUpdate() {
         if(!!crowdinFile) {
           try {
             await crowdinApi.sourceFilesApi.getFile(projectId, crowdinFile.crowdinFileId);
+            try {
+              await axios({
+                method: 'patch',
+                url: `${crowdinApi.uploadStorageApi.url}/projects/${projectId}/files/${crowdinFile.crowdinFileId}`,
+                data: [{value: `${f.title}`, op:PatchOperation.REPLACE , path: '/title'}],
+                headers: {
+                  Authorization: `Bearer ${res.crowdinToken}`,
+                }
+              })
+            } catch(e) {
+              console.log('cant update title', e);
+            }
             const updatedFile = await crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, crowdinFile.crowdinFileId, {storageId: f.id});
             return crowdinFile.update({
               subject: f.subject,
@@ -77,8 +93,15 @@ function crowdinUpdate() {
           });
         }
       }));
+      if(!res.headersSent) {
+        return res.json(uploadedFiles);
+      }
 
-      res.json(uploadedFiles);
+      emitEvent({
+        error: false,
+        refreshCrowdin: true,
+        message: 'Async files upload to Crowdin finished',
+      }, res);
     } catch(e) {
       catchRejection('Cant upload files to Crowdin', res)(e);
     }

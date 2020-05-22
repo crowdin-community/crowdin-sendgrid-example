@@ -6,8 +6,9 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title></title>
     <script src="https://crowdin-web-components.s3.amazonaws.com/crowdin-web-components.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
 
-  <script src="/polyfills/promise.js"></script>
+    <script src="/polyfills/promise.js"></script>
     <script src="/polyfills/fetch.js"></script>
     <style type='text/css'>
         .i_w {
@@ -95,6 +96,15 @@
 </div>
 <crowdin-toasts></crowdin-toasts>
 <script type=text/javascript>
+  let socket = io();
+  socket.on('message', (event) => {
+    showToast(event.message || message);
+    event.reload && isInstalled();
+    event.refreshCrowdin && getCrowdinFiles();
+    event.refreshIntegration && getIntegrationFiles();
+    event.error && event.e && console.error(event.e);
+  });
+
   if (!window.Promise) {
     window.Promise = Promise;
   }
@@ -105,6 +115,17 @@
   let client_id = urlParams.get('client_id');
   let tokenJwt = urlParams.get('tokenJwt');
   let restParams = window.location.search;
+
+  socket.on('connect', () => {
+    try {
+      let decoded = parseJwt(tokenJwt);
+      socket.emit('createTunnel', {
+        tunnelId: `${decoded.domain}__${decoded.aud}__${decoded.context.project_id}`,
+      });
+    } catch(e) {
+      console.log('Can\'t establish web-socket connection');
+    }
+  });
 
   let postPromises = {};
 
@@ -125,14 +146,6 @@
     // here the right place to console.log what goes wrong
     // console.log('err -------------->', e);
     showToast(e.error || message);
-    let el = document.querySelector('.i_w .center');
-    if(!!el) {
-      el.innerHTML =
-        `<crowdin-nothing-to-display
-                message="${manifest.name}"
-                sub-message="It's not a problem with crowdin, it's something on app backend"
-            ></crowdin-nothing-to-display>`;
-    }
   }
 
   function checkResponse(response) {
@@ -143,7 +156,7 @@
       response.json()
         .then(res => {
           if(![200, 201].includes(response.status)) {
-            reject(JSON.parse(res));
+            reject(res);
           } else {
             resolve(res);
           }
