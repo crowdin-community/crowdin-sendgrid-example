@@ -21,7 +21,7 @@ module.exports = {
         res.status(401).send('Cant verify');
       } else {
         res.origin = decoded;
-        res.clientId = `${res.origin.domain}__${res.origin.context.project_id}__${res.origin.sub}`;
+        res.clientId = `${res.origin.domain || res.origin.context.organization_id}__${res.origin.context.project_id}__${res.origin.sub}`;
         setTimeout(() => {
           if(!res.headersSent) {
             res.status(503).json({ error: 'Response took too much time. \nIt will continue running on background'})

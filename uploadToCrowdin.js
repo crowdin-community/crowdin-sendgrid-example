@@ -82,7 +82,7 @@ function crowdinUpdate() {
           });
 
           return Mapping.create({
-            domain: res.origin.domain,
+            domain: res.origin.domain || res.origin.context.organization_id,
             projectId: projectId,
             integrationUpdatedAt: f.integrationUpdatedAt,
             crowdinUpdatedAt: newFile.data.updatedAt,
