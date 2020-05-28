@@ -37,7 +37,13 @@ function crowdinUpdate() {
       );
 
       const uploadedFiles = await Promise.all(addedFiles.map( async f => {
-        const crowdinFile = await Mapping.findOne({where: {projectId: projectId, integrationFileId: f.integrationFileId}});
+        const crowdinFile = await Mapping.findOne({
+          where: {
+            projectId: projectId,
+            domain: res.origin.domain,
+            integrationFileId: f.integrationFileId
+          }
+        });
         if(!!crowdinFile) {
           try {
             await crowdinApi.sourceFilesApi.getFile(projectId, crowdinFile.crowdinFileId);
