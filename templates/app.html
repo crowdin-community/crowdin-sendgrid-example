@@ -115,6 +115,7 @@
   let client_id = urlParams.get('client_id');
   let tokenJwt = urlParams.get('tokenJwt');
   let restParams = window.location.search;
+  let frameData = JSON.parse(window.name);
 
   socket.on('connect', () => {
     try {
@@ -198,6 +199,8 @@
 
           // request for new token
           parentWindowPostMessage({
+            identifier: frameData.app.identifier,
+            key: frameData.app.key,
             client_id: client_id,
             command: 'token',
             uid: new Date().getTime(),

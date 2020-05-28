@@ -36,7 +36,7 @@ const Mapping = db.define('mapping', {
 // Get records of uploaded files from integration to Crowdin
 Mapping.getFilesByDomainProjectId= function(res) {
   return Mapping.findAll({where: {
-    domain: res.origin.domain,
+    domain: res.origin.domain || res.origin.context.organization_id,
     projectId: res.origin.context.project_id,
   }})
 };

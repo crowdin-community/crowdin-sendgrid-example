@@ -29,7 +29,7 @@ app.get('/manifest.json', (req, res) => res.json(_.pick(config, 'identifier', 'n
 
 app.get('/status', middleware.requireAuthentication, async (req, res) => {
   try {
-    const organization = await Organization.findOne({where: {uid: res.origin.domain}});
+    const organization = await Organization.findOne({where: {uid: res.origin.domain || res.origin.context.organization_id}});
     const integration = await Integration.findOne({where: {uid: res.clientId}});
     res.json({isInstalled: !!organization, isLoggedIn: !!integration});
   } catch(e) {

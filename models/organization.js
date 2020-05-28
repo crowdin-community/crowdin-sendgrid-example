@@ -59,7 +59,7 @@ Organization.getProjectFiles = () => async (req, res) => {
   try {
     const crowdinApi = res.crowdinApiClient;
     const projectId = res.origin.context.project_id;
-    const uploadedFiles = await Mapping.findAll({where: { projectId: projectId, domain: res.origin.domain } });
+    const uploadedFiles = await Mapping.findAll({where: { projectId: projectId, domain: res.origin.domain || res.origin.context.organization_id } });
     let files = [];
     if(uploadedFiles && !!uploadedFiles.length){
       const filesRes = await Promise.all(uploadedFiles.map(f => crowdinApi.sourceFilesApi.getFile(projectId, f.crowdinFileId).catch(e => ({}))));
@@ -95,7 +95,7 @@ Organization.getProjectFiles = () => async (req, res) => {
 
 Organization.install = () => async (req, res) => {
   try {
-    const organization = await Organization.findOne({where: {uid: req.body.domain}});
+    const organization = await Organization.findOne({where: {uid: req.body.domain || req.body.organizationId}});
     const credentials = await axios.post(keys.crowdinAuthUrl, {
       grant_type: 'authorization_code',
       client_id: keys.crowdinClientId,
@@ -103,7 +103,7 @@ Organization.install = () => async (req, res) => {
       code: req.body.code,
     });
     const params = {
-      uid: req.body.domain,
+      uid: req.body.domain || req.body.organizationId,
       refreshToken: encryptData(credentials.data.refresh_token),
       accessToken: encryptData(credentials.data.access_token),
       expire: new Date().getTime()/1000 + +credentials.data.expires_in
@@ -122,17 +122,23 @@ Organization.install = () => async (req, res) => {
 Organization.getOrganization = (res) => {
   return new Promise ( async (resolve, reject) => {
     try {
-      const organization = await Organization.findOne({where: {uid: res.origin.domain}});
+      const organization = await Organization.findOne({where: {uid: res.origin.domain || res.origin.context.organization_id}});
       if(!organization) {
         return reject('Can\'t find organization by id');
       }
       const isExpired = +organization.expire < +new Date().getTime() / 1000;
       if(!isExpired) {
         res.crowdinToken = decryptData(organization.accessToken);
-        res.crowdinApiClient = new crowdin({
-          token: decryptData(organization.accessToken),
-          organization: organization.uid,
-        });
+
+        const credentials = {
+          token: decryptData(organization.accessToken)
+        }
+
+        if (res.origin.domain) {
+          credentials.organization = organization.uid;
+        }
+
+        res.crowdinApiClient = new crowdin(credentials);
         resolve();
       } else {
         const credentials = await axios.post(keys.crowdinAuthUrl, {
@@ -147,10 +153,16 @@ Organization.getOrganization = (res) => {
           expire: (new Date().getTime() / 1000) + credentials.data.expires_in
         });
         res.crowdinToken = decryptData(updatedOrg.accessToken);
-        res.crowdinApiClient = new crowdin({
-          token: decryptData(updatedOrg.accessToken),
-          organization: updatedOrg.uid,
-        });
+
+        const options = {
+          token: decryptData(updatedOrg.accessToken)
+        }
+
+        if (res.origin.domain) {
+          options.organization = updatedOrg.uid;
+        }
+
+        res.crowdinApiClient = new crowdin(options);
         resolve()
       }
     } catch(e) {
