@@ -59,7 +59,7 @@ Organization.getProjectFiles = () => async (req, res) => {
   try {
     const crowdinApi = res.crowdinApiClient;
     const projectId = res.origin.context.project_id;
-    const uploadedFiles = await Mapping.findAll({where: { projectId: projectId, domain: res.origin.domain || res.origin.context.organization_id } });
+    const uploadedFiles = await Mapping.findAll({where: { projectId: projectId, domain: `${res.origin.domain || res.origin.context.organization_id}` } });
     let files = [];
     if(uploadedFiles && !!uploadedFiles.length){
       const filesRes = await Promise.all(uploadedFiles.map(f => crowdinApi.sourceFilesApi.getFile(projectId, f.crowdinFileId).catch(e => ({}))));
@@ -95,7 +95,7 @@ Organization.getProjectFiles = () => async (req, res) => {
 
 Organization.install = () => async (req, res) => {
   try {
-    const organization = await Organization.findOne({where: {uid: req.body.domain || req.body.organizationId}});
+    const organization = await Organization.findOne({where: {uid: `${req.body.domain || req.body.organizationId}`}});
     const credentials = await axios.post(keys.crowdinAuthUrl, {
       grant_type: 'authorization_code',
       client_id: keys.crowdinClientId,
@@ -103,7 +103,7 @@ Organization.install = () => async (req, res) => {
       code: req.body.code,
     });
     const params = {
-      uid: req.body.domain || req.body.organizationId,
+      uid: `${req.body.domain || req.body.organizationId}`,
       refreshToken: encryptData(credentials.data.refresh_token),
       accessToken: encryptData(credentials.data.access_token),
       expire: new Date().getTime()/1000 + +credentials.data.expires_in
@@ -122,7 +122,7 @@ Organization.install = () => async (req, res) => {
 Organization.getOrganization = (res) => {
   return new Promise ( async (resolve, reject) => {
     try {
-      const organization = await Organization.findOne({where: {uid: res.origin.domain || res.origin.context.organization_id}});
+      const organization = await Organization.findOne({where: {uid: `${res.origin.domain || res.origin.context.organization_id}`}});
       if(!organization) {
         return reject('Can\'t find organization by id');
       }
