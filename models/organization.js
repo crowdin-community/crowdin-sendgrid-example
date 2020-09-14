@@ -59,17 +59,19 @@ Organization.getProjectFiles = () => async (req, res) => {
   try {
     const crowdinApi = res.crowdinApiClient;
     const projectId = res.origin.context.project_id;
-    const uploadedFiles = await Mapping.findAll({where: { projectId: projectId, domain: `${res.origin.domain || res.origin.context.organization_id}` } });
+    const uploadedFiles = await Mapping.getFilesByDomainProjectId(res);
     let files = [];
     if(uploadedFiles && !!uploadedFiles.length){
+      const foldersRes = await crowdinApi.sourceFilesApi.listProjectDirectories(projectId, undefined, undefined, 500);
       const filesRes = await Promise.all(uploadedFiles.map(f => crowdinApi.sourceFilesApi.getFile(projectId, f.crowdinFileId).catch(e => ({}))));
       files = filesRes.filter(fr => !!fr.data).map(({data}) => data).map(({directoryId, branchId, name, title, ...rest}) => ({
         ...rest,
         name: title || name,
         title: title ? name : undefined,
         node_type: nodeTypes.FILE,
-        parent_id: '0' //directoryId || branchId || 0
+        parent_id: directoryId || branchId || 0
       }));
+      files.push(...foldersRes.data.map(({data}) => ({...data, node_type: '0', parent_id: data.branchId || data.directoryId || 0})));
     }
 
     //  -------------------------------    all files without mapping -----------------------------------------
@@ -130,15 +132,11 @@ Organization.getOrganization = (res) => {
       if(!isExpired) {
         res.crowdinToken = decryptData(organization.accessToken);
 
-        const credentials = {
-          token: decryptData(organization.accessToken)
-        }
-
-        if (res.origin.domain) {
-          credentials.organization = organization.uid;
-        }
-
-        res.crowdinApiClient = new crowdin(credentials);
+        res.crowdinApiClient = new crowdin({
+          token: decryptData(organization.accessToken),
+          ...keys.isDev ? {baseUrl: keys.crowdinBaseApiUrl} : {},
+          ...((res.origin || {}).domain) ? { organization: organization.uid } : {}
+        });
         resolve();
       } else {
         const credentials = await axios.post(keys.crowdinAuthUrl, {

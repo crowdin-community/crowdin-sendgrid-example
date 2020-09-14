@@ -58,19 +58,31 @@ Integration.Login = () => async (req, res) => {
 Integration.getData = () => async (req, res) => {
   try {
     const client = res.integrationClient;
-    const files = [{id: 'designLibrary', name: 'Design library', parent_id: 0, node_type: nodeTypes.FOLDER}];
-    const [response, body] = await client.request({ method: 'GET', url: '/v3/designs' });
-    if(response.statusCode !== 200) {
-      catchRejection('Cant fetch data from integration', res)(response);
-    } else {
-      files.push(...body.result.map((item) => ({
-        icon: '/assets/logo.svg',
-        node_type: nodeTypes.FILE,
-        parent_id: 'designLibrary',
-        ...item
-      })));
-      res.send(files)
+    const files = [
+      {id: 'Design library', name: 'Design library', parent_id: 0, node_type: nodeTypes.FOLDER},
+      {id: 'Dynamic Templates', name: 'Dynamic Templates', parent_id: 0, node_type: nodeTypes.FOLDER},
+    ];
+    const [response, body] = await client.request({ method: 'GET', url: '/v3/designs?page_size=200'});
+    const [responseDT, bodyDT] = await client.request({ method: 'GET', url: '/v3/templates?generations=dynamic,legacy'});
+    if(response.statusCode !== 200 || responseDT.statusCode !== 200) {
+      return catchRejection('Cant fetch data from integration', res)(response);
     }
+
+    files.push(...body.result.map((item) => ({
+      icon: '/assets/logo.svg',
+      node_type: nodeTypes.FILE,
+      parent_id: 'Design library',
+      ...item
+    })));
+
+    files.push(...bodyDT.templates.map((item) => ({
+      icon: '/assets/logo.svg',
+      node_type: nodeTypes.FILE,
+      parent_id: 'Dynamic Templates',
+      ...item
+    })));
+
+    res.send(files);
   } catch(e) {
     catchRejection('Cant fetch data from integration', res)(e);
   }
