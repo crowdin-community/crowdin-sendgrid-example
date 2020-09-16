@@ -29,12 +29,13 @@ const Mapping = db.define('mapping', {
   },
   categories: Sequelize.STRING,
   subject: Sequelize.STRING,
+  integrationDataType: Sequelize.STRING,
 });
 
 // Mapping.sync({force: true});
 
 // Get records of uploaded files from integration to Crowdin
-Mapping.getFilesByDomainProjectId= function(res) {
+Mapping.getFilesByDomainProjectId = function(res) {
   return Mapping.findAll({where: {
     domain: `${res.origin.domain || res.origin.context.organization_id}`,
     projectId: res.origin.context.project_id,
