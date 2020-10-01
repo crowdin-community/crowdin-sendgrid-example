@@ -15,6 +15,9 @@ const Integration = db.define('Integration', {
   integrationToken: {
     type: Sequelize.STRING(10000),
   },
+  metadataFileId: {
+    type: Sequelize.STRING,
+  }
 });
 
 Integration.getApiClient = async (req, res) => {
