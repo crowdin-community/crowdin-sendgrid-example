@@ -20,7 +20,7 @@ const getFileContent = file => {
   return '';
 };
 
-const crowdinFolders = [];
+let crowdinFolders = [];
 const pendingFolders = {};
 
 const folderFindFunction = (name, parentId) => f =>
@@ -73,6 +73,19 @@ function crowdinUpdate() {
         integrationFiles.map(([s, f]) => crowdinApi.uploadStorageApi.addStorage(`${f.id}.html`, getFileContent(f)))
       );
 
+      const getSubject = (i, prefix = '') => {
+        if(integrationFiles[i][1].subject){
+          return {[`${prefix}subject`]: integrationFiles[i][1].subject};
+        } else if(integrationFiles[i][1].versions) {
+          let version = find(integrationFiles[i][1].versions, ({active}) => !!active);
+          if(!version){
+            version = integrationFiles[i][1].versions[0];
+          }
+          return version ? { [`${prefix}subject`]: version.subject } : {};
+        }
+        return {}
+      };
+
       const addedFiles = storageIds.map((f, i) =>
         ({
           ...f.data,
@@ -81,11 +94,14 @@ function crowdinUpdate() {
           integrationDataType: filesByIntegrationFileId[integrationFiles[i][1].id].parent_id,
           integrationUpdatedAt: filesByIntegrationFileId[integrationFiles[i][1].id].updated_at,
           ...filesByIntegrationFileId[integrationFiles[i][1].id].categories ? {categories: JSON.stringify(filesByIntegrationFileId[integrationFiles[i][1].id].categories)} : {},
-          ...filesByIntegrationFileId[integrationFiles[i][1].id].subject ? {subject: filesByIntegrationFileId[integrationFiles[i][1].id].subject} : {},
+          ...getSubject(i),
         })
       );
 
       const integrationDirectory = await getFolderId(crowdinApi, projectId, 0, 'SendGrid integration');
+
+      const subjects = integrationFiles.reduce((acc, [status, file], index) => ({...acc, ...getSubject(index, `${file.id}__`)}), {});
+      await updateSubjects(subjects, res, integrationDirectory);
 
       const uploadedFiles = await Promise.all(addedFiles.map( async f => {
         const crowdinFile = await Mapping.findOne({
@@ -160,6 +176,7 @@ function crowdinUpdate() {
         }
       }));
       if(!res.headersSent) {
+        crowdinFolders = [];
         return res.json(uploadedFiles);
       }
 
@@ -173,5 +190,46 @@ function crowdinUpdate() {
     }
   }
 }
+
+const updateSubjects = async (updatedSubjects, res, integrationRootDirectory) => {
+
+  const projectId = res.origin.context.project_id;
+  const crowdinApi = res.crowdinApiClient;
+
+  try {
+    if(!res.integration.metadataFileId) {
+      throw new Error(`It's ok go to create file`);
+    }
+
+    const subjectsFileLink = await crowdinApi.sourceFilesApi.downloadFile(projectId, res.integration.metadataFileId);
+    const subjectsFileData = await axios({
+      method: 'get',
+      url: subjectsFileLink.data.url,
+    });
+
+    const subjects = subjectsFileData.data;
+
+    const storageId = await crowdinApi.uploadStorageApi.addStorage(`SendGridIntegrationMetaData.json`, JSON.stringify({...subjects, ...updatedSubjects}));
+
+    return crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, res.integration.metadataFileId, {
+      storageId: storageId.data.id
+    });
+
+  } catch(e) {
+
+    const storageId = await crowdinApi.uploadStorageApi.addStorage(`SendGridIntegrationMetaData.json`, JSON.stringify(updatedSubjects));
+
+    const newFile = await crowdinApi.sourceFilesApi.createFile(projectId, {
+      storageId: storageId.data.id,
+      directoryId: integrationRootDirectory,
+      name: 'SendGridIntegrationMetaData.json',
+      title: 'SendGrid Integration Meta Data'
+    });
+
+    return res.integration.update({
+      metadataFileId: `${newFile.data.id}`,
+    });
+  }
+};
 
 module.exports = crowdinUpdate;

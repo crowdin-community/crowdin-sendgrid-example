@@ -1,16 +1,17 @@
 const axios = require('axios').default;
+const { union } = require('lodash');
 
 const { emitEvent } = require('./sockets');
 const Mapping = require('./models/mapping');
 const { catchRejection } = require('./helpers');
 
-const updateDesignLibraryFile = async ( integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName ) => {
+const updateDesignLibraryFile = async ( integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject ) => {
   if(integrationTranslationFile){
     return integrationClient.request({
       method: 'PATCH',
       url: `/v3/designs/${integrationTranslationFile.id}`,
       body: {
-        subject: originIntegrationFile.subject,
+        subject,
         generate_plain_content: true,
         html_content: translatedFilesData[index],
         categories: originIntegrationFile.categories,
@@ -22,7 +23,7 @@ const updateDesignLibraryFile = async ( integrationClient, integrationTranslatio
       url: `/v3/designs`,
       body: {
         name: fileName,
-        subject: originIntegrationFile.subject,
+        subject,
         generate_plain_content: true,
         html_content: translatedFilesData[index],
         categories: originIntegrationFile.categories,
@@ -31,12 +32,13 @@ const updateDesignLibraryFile = async ( integrationClient, integrationTranslatio
   }
 };
 
-const updateDynamicTemplateFile = async ( integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName ) => {
+const updateDynamicTemplateFile = async ( integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject ) => {
   if(integrationTranslationFile){
     return integrationClient.request({
       method: 'PATCH',
       url: `/v3/templates/${integrationTranslationFile.id}/versions/${integrationTranslationFile.versions[0].id}`,
       body: {
+        subject,
         generate_plain_content: true,
         html_content: translatedFilesData[index],
       }
@@ -56,6 +58,7 @@ const updateDynamicTemplateFile = async ( integrationClient, integrationTranslat
           url: `/v3/templates/${data.id}/versions`,
           body: {
             name: fileName,
+            subject,
             html_content: translatedFilesData[index],
           }
         })
@@ -68,8 +71,18 @@ function integrationUpdate() {
     try {
       const integrationClient = res.integrationClient;
       const crowdinApi = res.crowdinApiClient;
-      const filesTranslations = req.body;
+      const translationsResponse = req.body;
       const projectId = res.origin.context.project_id;
+
+      const mappedFiles = await Mapping.getFilesByDomainProjectId(res);
+      const mappedFilesById = mappedFiles.reduce((acc, f) => ({...acc, [f.crowdinFileId]: f}), {});
+
+      const filesTranslations = {};
+      Object.keys(translationsResponse).forEach(fId => {
+        if(mappedFilesById[fId]){
+          filesTranslations[fId] = translationsResponse[fId];
+        }
+      });
 
       const translations = Object.keys(filesTranslations).reduce((acc, fileId) =>
         ([...acc, ...filesTranslations[fileId].map(lId =>
@@ -77,8 +90,26 @@ function integrationUpdate() {
         )]), []
       );
 
-      const mappedFiles = await Mapping.getFilesByDomainProjectId(res);
-      const mappedFilesById = mappedFiles.reduce((acc, f) => ({...acc, [f.crowdinFileId]: f}), {});
+      const subjectTranslations = Object.values(filesTranslations).reduce((acc, translations) => union(acc, translations), []);
+
+      let subjects = {};
+      try {
+        if(!res.integration.metadataFileId) {
+          throw new Error(`It's ok go to create file`);
+        }
+
+        const buildLinks = await Promise.all(
+          subjectTranslations.map(lId => crowdinApi.translationsApi.buildProjectFileTranslation(projectId, res.integration.metadataFileId, {targetLanguageId: lId, exportAsXliff: false}))
+        );
+        const buffers = await Promise.all(buildLinks.map(r => axios.get(r.data.url)));
+
+        subjectTranslations.forEach( (lId, index) => {
+          subjects[lId] = buffers[index].data;
+        });
+
+      } catch(e) {
+        console.log('Can\'t get subjects, but it\'s ok');
+      }
 
       const [integrationListStatus, integrationListBody] = await integrationClient.request({ method: 'GET', url: '/v3/designs' });
       const [integrationTemplatesStatus, integrationTemplatesBody] = await integrationClient.request({ method: 'GET', url: '/v3/templates?generations=dynamic,legacy'});
@@ -102,10 +133,11 @@ function integrationUpdate() {
         const mappedFile = mappedFilesById[t.fileId];
         const integrationTranslationFile = integrationFilesList.find(f => f.name === fileName);
         const originIntegrationFile =  integrationFilesList.find(f => f.id === mappedFile.integrationFileId);
+        const subject = subjects[t.languageId][`${originIntegrationFile.id}__subject`] || originIntegrationFile.subject;
         if(mappedFile.integrationDataType === 'Dynamic Templates'){
-          return updateDynamicTemplateFile(integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName);
+          return updateDynamicTemplateFile(integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject);
         } else {
-          return updateDesignLibraryFile(integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName);
+          return updateDesignLibraryFile(integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject);
         }
       }));
 
