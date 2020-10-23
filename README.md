@@ -146,6 +146,12 @@ git push heroku master
 
 For more about Node.js Apps on Heroku read "[Getting Started on Heroku with Node.js](https://devcenter.heroku.com/articles/getting-started-with-nodejs)" article.
 
+#### Docker
+1. sudo docker build -t sendgrid-app .
+2. sudo docker run --restart on-failure:5 -it --log-driver local --volume /usr/data/sendgrid-app:/usr/src/app/data -d -p 7777:7777 sendgrid-app
+
+the database file /usr/data/sendgrid-app
+
 ### App Installation in Crowdin
 
 1. In the upper-right corner, click your profile photo and select *Organization Settings*.
