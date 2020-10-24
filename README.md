@@ -12,7 +12,6 @@ Using this Application you can easily localize your SendGrid content in Crowdin 
 * [Running](#running)
     * [Local Environment](#local-environment)
     * [Heroku](#heroku)
-    * [Docker](#docker)
 * [App Installation in Crowdin](#app-installation-in-crowdin)
 * [Project Structure](#project-structure)
 * [Creating an App](#creating-an-app)
@@ -146,12 +145,6 @@ git push heroku master
 ```
 
 For more about Node.js Apps on Heroku read "[Getting Started on Heroku with Node.js](https://devcenter.heroku.com/articles/getting-started-with-nodejs)" article.
-
-#### Docker
-1. sudo docker build -t sendgrid-app .
-2. sudo docker run --restart on-failure:5 -it --log-driver local --volume /usr/data/sendgrid-app:/usr/src/app/data -d -p 7220:7220 sendgrid-app
-
-the database file /usr/data/sendgrid-app
 
 ### App Installation in Crowdin
 
