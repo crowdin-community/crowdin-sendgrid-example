@@ -6,6 +6,7 @@ const catchRejection = (message, res) => e => {
   // here the right place to console.log what goes wrong
   // console.log('message ---------------------------------------->', message);
   // console.log('e ---------------------------------------------->', e);
+  // console.log('e ---------------------------------------------->', e.errors[0].error);
   let errorText = message;
   if(e){
     if(typeof e === 'string'){
