@@ -21,7 +21,7 @@ const getFileContent = file => {
 };
 
 let crowdinFolders = [];
-const pendingFolders = {};
+let pendingFolders = {};
 
 const folderFindFunction = (name, parentId) => f =>
   f.name === name && (parentId === 0 || f.directoryId === parentId || f.branchId === parentId);
@@ -107,7 +107,7 @@ function crowdinUpdate() {
         const crowdinFile = await Mapping.findOne({
           where: {
             projectId: projectId,
-            domain: res.origin.domain,
+            domain: `${res.origin.domain || res.origin.context.organization_id}`,
             integrationFileId: f.integrationFileId
           }
         });
@@ -175,8 +175,9 @@ function crowdinUpdate() {
           });
         }
       }));
+      crowdinFolders = [];
+      pendingFolders = {};
       if(!res.headersSent) {
-        crowdinFolders = [];
         return res.json(uploadedFiles);
       }
 
@@ -186,6 +187,8 @@ function crowdinUpdate() {
         message: 'Async files upload to Crowdin finished',
       }, res);
     } catch(e) {
+      crowdinFolders = [];
+      pendingFolders = {};
       catchRejection('Cant upload files to Crowdin', res)(e);
     }
   }
@@ -196,12 +199,18 @@ const updateSubjects = async (updatedSubjects, res, integrationRootDirectory) =>
   const projectId = res.origin.context.project_id;
   const crowdinApi = res.crowdinApiClient;
 
+  let metadataFileId = res.integration.metadataFileId;
+
   try {
-    if(!res.integration.metadataFileId) {
-      throw new Error(`It's ok go to create file`);
+    if(!metadataFileId) {
+      const integrationRootFiles = await crowdinApi.sourceFilesApi.listProjectFiles(projectId, null, integrationRootDirectory);
+      metadataFileId = ((integrationRootFiles.data.find(f => f.data.name === 'SendGridIntegrationMetaData.json') || {}).data || {}).id;
+      if(!metadataFileId){
+        throw new Error(`It's ok go to create file`);
+      }
     }
 
-    const subjectsFileLink = await crowdinApi.sourceFilesApi.downloadFile(projectId, res.integration.metadataFileId);
+    const subjectsFileLink = await crowdinApi.sourceFilesApi.downloadFile(projectId, metadataFileId);
     const subjectsFileData = await axios({
       method: 'get',
       url: subjectsFileLink.data.url,
@@ -211,7 +220,7 @@ const updateSubjects = async (updatedSubjects, res, integrationRootDirectory) =>
 
     const storageId = await crowdinApi.uploadStorageApi.addStorage(`SendGridIntegrationMetaData.json`, JSON.stringify({...subjects, ...updatedSubjects}));
 
-    return crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, res.integration.metadataFileId, {
+    return crowdinApi.sourceFilesApi.updateOrRestoreFile(projectId, metadataFileId, {
       storageId: storageId.data.id
     });
 

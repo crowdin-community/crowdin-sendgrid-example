@@ -33,7 +33,7 @@ const updateDesignLibraryFile = async ( integrationClient, integrationTranslatio
 };
 
 const updateDynamicTemplateFile = async ( integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject ) => {
-  if(integrationTranslationFile){
+  if(integrationTranslationFile && ((integrationTranslationFile.versions || [])[0] || {}).id){
     return integrationClient.request({
       method: 'PATCH',
       url: `/v3/templates/${integrationTranslationFile.id}/versions/${integrationTranslationFile.versions[0].id}`,
