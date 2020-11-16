@@ -93,22 +93,18 @@ function integrationUpdate() {
       const subjectTranslations = Object.values(filesTranslations).reduce((acc, translations) => union(acc, translations), []);
 
       let subjects = {};
-      try {
-        if(!res.integration.metadataFileId) {
-          throw new Error(`It's ok go to create file`);
-        }
-
+      if(res.integration.metadataFileId){
         const buildLinks = await Promise.all(
           subjectTranslations.map(lId => crowdinApi.translationsApi.buildProjectFileTranslation(projectId, res.integration.metadataFileId, {targetLanguageId: lId, exportAsXliff: false}))
         );
+        if(buildLinks.some(r => !(r.data || {}).url)){
+          throw new Error('Some untranslated files were not exported due to the enabled "Skip untranslated files" option');
+        }
         const buffers = await Promise.all(buildLinks.map(r => axios.get(r.data.url)));
 
         subjectTranslations.forEach( (lId, index) => {
           subjects[lId] = buffers[index].data;
         });
-
-      } catch(e) {
-        console.log('Can\'t get subjects, but it\'s ok');
       }
 
       const [integrationListStatus, integrationListBody] = await integrationClient.request({ method: 'GET', url: '/v3/designs' });
@@ -124,6 +120,9 @@ function integrationUpdate() {
         const buildLinks = await Promise.all(
           translations.map(t => crowdinApi.translationsApi.buildProjectFileTranslation(projectId, t.fileId, {targetLanguageId: t.languageId, exportAsXliff: false}))
         );
+        if(buildLinks.some(r => !(r.data || {}).url)){
+          throw new Error('Some untranslated files were not exported due to the enabled "Skip untranslated files" option');
+        }
         const buffers = await Promise.all(buildLinks.map(r => axios.get(r.data.url)));
         return buffers.map(b => b.data);
       })();
@@ -133,7 +132,10 @@ function integrationUpdate() {
         const mappedFile = mappedFilesById[t.fileId];
         const integrationTranslationFile = integrationFilesList.find(f => f.name === fileName);
         const originIntegrationFile =  integrationFilesList.find(f => f.id === mappedFile.integrationFileId);
-        const subject = subjects[t.languageId][`${originIntegrationFile.id}__subject`] || originIntegrationFile.subject;
+        if(!(subjects[t.languageId] || {})[`${originIntegrationFile.id}__subject`] && !!res.integration.metadataFileId){
+          throw new Error('Some untranslated files were not exported due to the enabled "Skip untranslated strings" option');
+        }
+        const subject = subjects[t.languageId][`${originIntegrationFile.id}__subject`];
         if(mappedFile.integrationDataType === 'Dynamic Templates'){
           return updateDynamicTemplateFile(integrationClient, integrationTranslationFile, originIntegrationFile, translatedFilesData, index, fileName, subject);
         } else {
